@@ -43,24 +43,36 @@ public class CommandHandler {
     }
 
     private void markTask(String command) {
-        int taskNumber = Integer.parseInt(
-                command.substring(MARK_COMMAND.length()));
-
-        Task task = taskList.getTask(taskNumber);
-        task.markAsDone();
-
-        System.out.println(" Nice! I've marked this task as done:");
-        System.out.println("   " + task);
+        updateTaskStatus(command, MARK_COMMAND, true,
+                " Nice! I've marked this task as done:");
     }
 
     private void unmarkTask(String command) {
+        updateTaskStatus(command, UNMARK_COMMAND, false,
+                " OK, I've marked this task as not done yet:");
+    }
+
+    /**
+     * Changes a task's completion status and prints the corresponding feedback.
+     *
+     * @param command the complete mark or unmark command
+     * @param commandPrefix the prefix used by the command
+     * @param shouldBeDone whether the task should be marked as done
+     * @param confirmationMessage the message to display after updating the task
+     */
+    private void updateTaskStatus(String command, String commandPrefix,
+            boolean shouldBeDone, String confirmationMessage) {
         int taskNumber = Integer.parseInt(
-                command.substring(UNMARK_COMMAND.length()));
+                command.substring(commandPrefix.length()));
 
         Task task = taskList.getTask(taskNumber);
-        task.markAsNotDone();
+        if (shouldBeDone) {
+            task.markAsDone();
+        } else {
+            task.markAsNotDone();
+        }
 
-        System.out.println(" OK, I've marked this task as not done yet:");
+        System.out.println(confirmationMessage);
         System.out.println("   " + task);
     }
 
