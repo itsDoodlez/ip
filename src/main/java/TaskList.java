@@ -1,5 +1,6 @@
 public class TaskList {
-    public static final int MAX_TASKS = 100;
+    private static final int MAX_TASKS = 100;
+
     private Task[] tasks;
     private int taskCount;
 
@@ -8,8 +9,8 @@ public class TaskList {
         taskCount = 0;
     }
 
-    public void addTask(String description) {
-        tasks[taskCount] = new Task(description);
+    public void addTask(Task task) {
+        tasks[taskCount] = task;
         taskCount++;
     }
 
@@ -23,5 +24,9 @@ public class TaskList {
 
     public Task getTask(int taskNumber) {
         return tasks[taskNumber - 1];
+    }
+
+    public int getTaskCount() {
+        return taskCount;
     }
 }
