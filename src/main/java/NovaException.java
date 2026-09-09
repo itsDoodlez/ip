@@ -1,7 +1,10 @@
+import java.io.Serial;
+
 /**
  * Represents an error caused by an invalid command or task operation in Nova.
  */
 public class NovaException extends Exception {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
