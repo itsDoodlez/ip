@@ -40,7 +40,7 @@ public class Nova {
      * @param commandHandler processes each command
      */
     private static void runCommandLoop(Scanner scanner, CommandHandler commandHandler) {
-        while (true) {
+        while (scanner.hasNextLine()) {
             String command = scanner.nextLine();
 
             System.out.print(DIVIDER);
@@ -49,7 +49,11 @@ public class Nova {
                 break;
             }
 
-            commandHandler.handleCommand(command);
+            try {
+                commandHandler.handleCommand(command);
+            } catch (NovaException e) {
+                System.out.println(e.getMessage());
+            }
 
             System.out.print(DIVIDER);
         }

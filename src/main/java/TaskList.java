@@ -1,3 +1,6 @@
+/**
+ * Stores the tasks created during the current Nova session.
+ */
 public class TaskList {
     private static final int MAX_TASKS = 100;
 
@@ -9,7 +12,17 @@ public class TaskList {
         taskCount = 0;
     }
 
-    public void addTask(Task task) {
+    /**
+     * Adds a task unless the list has reached its fixed capacity.
+     *
+     * @param task task to add
+     * @throws NovaException if the task list is full
+     */
+    public void addTask(Task task) throws NovaException {
+        if (taskCount >= MAX_TASKS) {
+            throw new NovaException(
+                    " OOPS! Your task list is full. Remove a task before adding another one.");
+        }
         tasks[taskCount] = task;
         taskCount++;
     }
@@ -22,7 +35,19 @@ public class TaskList {
         }
     }
 
-    public Task getTask(int taskNumber) {
+    /**
+     * Returns a task using the one-based number shown by {@link #listTasks()}.
+     *
+     * @param taskNumber one-based task number
+     * @return the requested task
+     * @throws NovaException if the task number does not refer to a task
+     */
+    public Task getTask(int taskNumber) throws NovaException {
+        if (taskNumber < 1 || taskNumber > taskCount) {
+            throw new NovaException(
+                    " OOPS! There is no task numbered " + taskNumber + ". Please choose a number from 1 to "
+                            + taskCount + ".");
+        }
         return tasks[taskNumber - 1];
     }
 
