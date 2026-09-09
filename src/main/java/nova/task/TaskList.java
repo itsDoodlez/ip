@@ -1,3 +1,7 @@
+package nova.task;
+
+import nova.exception.NovaException;
+
 /**
  * Stores the tasks created during the current Nova session.
  */

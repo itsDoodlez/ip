@@ -1,3 +1,5 @@
+package nova.exception;
+
 import java.io.Serial;
 
 /**
