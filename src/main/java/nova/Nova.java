@@ -1,4 +1,10 @@
+package nova;
+
 import java.util.Scanner;
+
+import nova.command.CommandHandler;
+import nova.exception.NovaException;
+import nova.task.TaskList;
 
 /**
  * Runs Nova's command-line user interface.
