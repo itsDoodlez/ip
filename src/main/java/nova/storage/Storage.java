@@ -30,8 +30,7 @@ public class Storage {
 
     /**
      * Loads saved tasks, or returns an empty list when the file does not exist yet.
-     * Rejects malformed files and files exceeding the task list's capacity, so Nova
-     * cannot overwrite them with a partially loaded list.
+     * Rejects malformed files so Nova cannot overwrite them with a partially loaded list.
      *
      * @return tasks in their saved order, including their completion status
      * @throws NovaException if the file cannot be read or fully loaded
@@ -50,7 +49,7 @@ public class Storage {
         for (int i = 0; i < lines.size(); i++) {
             try {
                 taskList.addTask(parseTask(lines.get(i)));
-            } catch (IllegalArgumentException | NovaException e) {
+            } catch (IllegalArgumentException e) {
                 throw new NovaException(" OOPS! Could not load saved task in " + filePath + " at line " + (i + 1)
                         + ": " + e.getMessage());
             }
