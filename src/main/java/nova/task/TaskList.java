@@ -3,7 +3,7 @@ package nova.task;
 import nova.exception.NovaException;
 
 /**
- * Stores the tasks created during the current Nova session.
+ * Stores Nova's tasks, including tasks loaded from a previous session.
  */
 public class TaskList {
     private static final int MAX_TASKS = 100;

@@ -1,9 +1,11 @@
 package nova;
 
+import java.nio.file.Path;
 import java.util.Scanner;
 
 import nova.command.CommandHandler;
 import nova.exception.NovaException;
+import nova.storage.Storage;
 import nova.task.TaskList;
 
 /**
@@ -21,9 +23,20 @@ public class Nova {
     public static void main(String[] args) {
         printWelcomeMessage();
 
+        Storage storage = new Storage(Path.of("data", "nova.txt"));
+        TaskList taskList;
+        try {
+            taskList = storage.load();
+        } catch (NovaException e) {
+            System.out.println(e.getMessage());
+            System.out.println(" Please fix the saved file or its permissions and restart Nova.");
+            System.out.println(" Your file was not changed.");
+            System.out.print(DIVIDER);
+            return;
+        }
+
         Scanner scanner = new Scanner(System.in);
-        TaskList taskList = new TaskList();
-        CommandHandler commandHandler = new CommandHandler(taskList);
+        CommandHandler commandHandler = new CommandHandler(taskList, storage);
 
         runCommandLoop(scanner, commandHandler);
         printGoodbyeMessage();

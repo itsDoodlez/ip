@@ -1,6 +1,7 @@
 package nova.command;
 
 import nova.exception.NovaException;
+import nova.storage.Storage;
 import nova.task.Deadline;
 import nova.task.Event;
 import nova.task.Task;
@@ -21,9 +22,11 @@ public class CommandHandler {
     private static final String TO_SEPARATOR = " /to ";
 
     private final TaskList taskList;
+    private final Storage storage;
 
-    public CommandHandler(TaskList taskList) {
+    public CommandHandler(TaskList taskList, Storage storage) {
         this.taskList = taskList;
+        this.storage = storage;
     }
 
     /**
@@ -39,6 +42,7 @@ public class CommandHandler {
 
         if (command.equals("list")) {
             listTasks();
+            return;
 
         } else if (command.equals(MARK_COMMAND.trim()) || command.startsWith(MARK_COMMAND)) {
             markTask(command);
@@ -59,6 +63,9 @@ public class CommandHandler {
             throw new NovaException(
                     " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, or unmark.");
         }
+
+        // Every other valid command adds a task or updates its completion status.
+        storage.save(taskList);
     }
 
     private void listTasks() {

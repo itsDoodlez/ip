@@ -1,5 +1,8 @@
 package nova.task;
 
+/**
+ * Holds the description and completion status shared by every task type.
+ */
 public class Task {
     private String description;
     private boolean isDone;
@@ -23,6 +26,10 @@ public class Task {
 
     public String getDescription() {
         return description;
+    }
+
+    public boolean isDone() {
+        return isDone;
     }
 
     @Override
