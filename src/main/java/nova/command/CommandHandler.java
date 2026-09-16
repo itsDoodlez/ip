@@ -16,6 +16,7 @@ public class CommandHandler {
     private static final String EVENT_COMMAND = "event ";
     private static final String MARK_COMMAND = "mark ";
     private static final String UNMARK_COMMAND = "unmark ";
+    private static final String DELETE_COMMAND = "delete ";
     private static final String BY_SEPARATOR = " /by ";
     private static final String FROM_SEPARATOR = " /from ";
     private static final String TO_SEPARATOR = " /to ";
@@ -46,6 +47,9 @@ public class CommandHandler {
         } else if (command.equals(UNMARK_COMMAND.trim()) || command.startsWith(UNMARK_COMMAND)) {
             unmarkTask(command);
 
+        } else if (command.equals(DELETE_COMMAND.trim()) || command.startsWith(DELETE_COMMAND)) {
+            deleteTask(command);
+
         } else if (command.equals(TODO_COMMAND.trim()) || command.startsWith(TODO_COMMAND)) {
             addTodo(command);
 
@@ -57,7 +61,7 @@ public class CommandHandler {
 
         } else {
             throw new NovaException(
-                    " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, or unmark.");
+                    " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, unmark, or delete.");
         }
     }
 
@@ -76,6 +80,22 @@ public class CommandHandler {
     }
 
     /**
+     * Removes the selected task and prints it with the remaining task count.
+     *
+     * @param command the complete delete command
+     * @throws NovaException if the task number is missing, invalid, or out of range
+     */
+    private void deleteTask(String command) throws NovaException {
+        int taskNumber = parseTaskNumber(command, DELETE_COMMAND, "delete");
+        Task task = taskList.removeTask(taskNumber);
+
+        System.out.println(" Noted. I've removed this task:");
+        System.out.println("   " + task);
+        System.out.println(" Now you have " + taskList.getTaskCount()
+                + " tasks in the list.");
+    }
+
+    /**
      * Changes a task's completion status and prints the corresponding feedback.
      *
      * @param command the complete mark or unmark command
@@ -85,22 +105,7 @@ public class CommandHandler {
      */
     private void updateTaskStatus(String command, String commandPrefix,
             boolean shouldBeDone, String confirmationMessage) throws NovaException {
-        String taskNumberText = command.equals(commandPrefix.trim())
-                ? ""
-                : command.substring(commandPrefix.length()).trim();
-        if (taskNumberText.isEmpty()) {
-            throw new NovaException(
-                    " OOPS! Please provide the number of the task to update.");
-        }
-
-        int taskNumber;
-        try {
-            taskNumber = Integer.parseInt(taskNumberText);
-        } catch (NumberFormatException e) {
-            throw new NovaException(
-                    " OOPS! The task number must be a valid whole number.");
-        }
-
+        int taskNumber = parseTaskNumber(command, commandPrefix, "update");
         Task task = taskList.getTask(taskNumber);
         if (shouldBeDone) {
             task.markAsDone();
@@ -110,6 +115,33 @@ public class CommandHandler {
 
         System.out.println(confirmationMessage);
         System.out.println("   " + task);
+    }
+
+    /**
+     * Parses a task number shared by the mark, unmark, and delete commands.
+     * Range validation is handled by the task list.
+     *
+     * @param command the complete command
+     * @param commandPrefix the command name followed by a space
+     * @param action action described in the missing-number error
+     * @return the task number entered by the user
+     * @throws NovaException if the number is missing or cannot be parsed as an integer
+     */
+    private int parseTaskNumber(String command, String commandPrefix, String action) throws NovaException {
+        String taskNumberText = command.equals(commandPrefix.trim())
+                ? ""
+                : command.substring(commandPrefix.length()).trim();
+        if (taskNumberText.isEmpty()) {
+            throw new NovaException(
+                    " OOPS! Please provide the number of the task to " + action + ".");
+        }
+
+        try {
+            return Integer.parseInt(taskNumberText);
+        } catch (NumberFormatException e) {
+            throw new NovaException(
+                    " OOPS! The task number must be a valid whole number.");
+        }
     }
 
     private void addTodo(String command) throws NovaException {

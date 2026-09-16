@@ -1,41 +1,34 @@
 package nova.task;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import nova.exception.NovaException;
 
 /**
  * Stores the tasks created during the current Nova session.
  */
 public class TaskList {
-    private static final int MAX_TASKS = 100;
-
-    private Task[] tasks;
-    private int taskCount;
+    private final List<Task> tasks;
 
     public TaskList() {
-        tasks = new Task[MAX_TASKS];
-        taskCount = 0;
+        tasks = new ArrayList<>();
     }
 
     /**
-     * Adds a task unless the list has reached its fixed capacity.
+     * Adds a task to the end of the dynamically sized list.
      *
      * @param task task to add
-     * @throws NovaException if the task list is full
      */
-    public void addTask(Task task) throws NovaException {
-        if (taskCount >= MAX_TASKS) {
-            throw new NovaException(
-                    " OOPS! Your task list is full. Remove a task before adding another one.");
-        }
-        tasks[taskCount] = task;
-        taskCount++;
+    public void addTask(Task task) {
+        tasks.add(task);
     }
 
     public void listTasks() {
         System.out.println(" Here are the tasks in your list:");
 
-        for (int i = 0; i < taskCount; i++) {
-            System.out.println(" " + (i + 1) + "." + tasks[i]);
+        for (int i = 0; i < tasks.size(); i++) {
+            System.out.println(" " + (i + 1) + "." + tasks.get(i));
         }
     }
 
@@ -47,15 +40,40 @@ public class TaskList {
      * @throws NovaException if the task number does not refer to a task
      */
     public Task getTask(int taskNumber) throws NovaException {
-        if (taskNumber < 1 || taskNumber > taskCount) {
-            throw new NovaException(
-                    " OOPS! There is no task numbered " + taskNumber + ". Please choose a number from 1 to "
-                            + taskCount + ".");
-        }
-        return tasks[taskNumber - 1];
+        validateTaskNumber(taskNumber);
+        return tasks.get(taskNumber - 1);
+    }
+
+    /**
+     * Removes a task using its displayed number. Later tasks shift up automatically.
+     *
+     * @param taskNumber one-based task number
+     * @return the removed task, for displaying confirmation
+     * @throws NovaException if the task number does not refer to a task
+     */
+    public Task removeTask(int taskNumber) throws NovaException {
+        validateTaskNumber(taskNumber);
+        return tasks.remove(taskNumber - 1);
     }
 
     public int getTaskCount() {
-        return taskCount;
+        return tasks.size();
+    }
+
+    /**
+     * Checks the displayed task number before converting it to a list index.
+     *
+     * @param taskNumber one-based task number
+     * @throws NovaException if the list is empty or the number is outside its range
+     */
+    private void validateTaskNumber(int taskNumber) throws NovaException {
+        if (tasks.isEmpty()) {
+            throw new NovaException(" OOPS! Your task list is empty.");
+        }
+        if (taskNumber < 1 || taskNumber > tasks.size()) {
+            throw new NovaException(
+                    " OOPS! There is no task numbered " + taskNumber + ". Please choose a number from 1 to "
+                            + tasks.size() + ".");
+        }
     }
 }
