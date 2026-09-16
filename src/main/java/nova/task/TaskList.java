@@ -6,7 +6,7 @@ import java.util.List;
 import nova.exception.NovaException;
 
 /**
- * Stores the tasks created during the current Nova session.
+ * Stores Nova's tasks, including tasks loaded from a previous session.
  */
 public class TaskList {
     private final List<Task> tasks;
