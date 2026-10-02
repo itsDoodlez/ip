@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -102,7 +104,7 @@ public class Storage {
         if (task instanceof Todo) {
             return "T" + details;
         } else if (task instanceof Deadline deadline) {
-            return "D" + details + "|" + escape(deadline.getBy());
+            return "D" + details + "|" + deadline.getBy();
         } else if (task instanceof Event event) {
             return "E" + details + "|" + escape(event.getFrom()) + "|" + escape(event.getTo());
         }
@@ -139,7 +141,7 @@ public class Storage {
 
         Task task = switch (type) {
         case "T" -> new Todo(fields.get(2));
-        case "D" -> new Deadline(fields.get(2), fields.get(3));
+        case "D" -> new Deadline(fields.get(2), parseDeadlineDate(fields.get(3)));
         case "E" -> new Event(fields.get(2), fields.get(3), fields.get(4));
         default -> throw new IllegalArgumentException("Unknown task type: " + type);
         };
@@ -147,6 +149,19 @@ public class Storage {
             task.markAsDone();
         }
         return task;
+    }
+
+    /**
+     * Reads a saved ISO date and rejects invalid or older free-text deadline values.
+     * The caller adds the file name and line number to this error without changing the file.
+     */
+    private LocalDate parseDeadlineDate(String text) {
+        try {
+            return LocalDate.parse(text);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(
+                    "Deadline date must be a valid date in yyyy-MM-dd format (e.g., 2019-10-15).", e);
+        }
     }
 
     /**

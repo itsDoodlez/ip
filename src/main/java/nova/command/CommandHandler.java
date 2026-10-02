@@ -1,5 +1,8 @@
 package nova.command;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 import nova.exception.NovaException;
 import nova.storage.Storage;
 import nova.task.Deadline;
@@ -170,15 +173,20 @@ public class CommandHandler {
         int separatorIndex = content.indexOf(BY_SEPARATOR);
         if (separatorIndex < 0) {
             throw new NovaException(
-                    " OOPS! A deadline must follow this format: deadline <description> /by <date or time>.");
+                    " OOPS! A deadline must follow this format: deadline <description> /by yyyy-MM-dd.");
         }
 
         String description = content.substring(0, separatorIndex).trim();
         String by = content.substring(separatorIndex + BY_SEPARATOR.length()).trim();
         validateText(description, "deadline description");
-        validateText(by, "deadline date or time");
+        validateText(by, "deadline date");
 
-        return new AddCommand(new Deadline(description, by));
+        try {
+            return new AddCommand(new Deadline(description, LocalDate.parse(by)));
+        } catch (DateTimeParseException e) {
+            throw new NovaException(
+                    " OOPS! Please enter a valid deadline date in yyyy-MM-dd format (e.g., 2019-10-15).");
+        }
     }
 
     /**

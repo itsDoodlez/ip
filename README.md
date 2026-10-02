@@ -14,7 +14,7 @@ spaces). `0` means not done and `1` means done. Events store both their start an
 
 ```text
 T|1|read book
-D|0|return book|June 6th
+D|0|return book|2019-10-15
 E|0|project meeting|Aug 6th 2pm|Aug 6th 4pm
 ```
 
@@ -37,6 +37,25 @@ java -cp out/level7 nova.storage.StorageTest
 ```
 
 The tests use temporary folders, so they do not modify your saved tasks.
+
+## Deadline dates
+
+Enter deadline dates in `yyyy-MM-dd` format:
+
+```text
+deadline return book /by 2019-10-15
+```
+
+Nova stores the deadline as a `java.time.LocalDate` and displays it as
+`[D][ ] return book (by: Oct 15 2019)`. Month names are always in English.
+Saved files keep the ISO date (`2019-10-15`) so the value reloads reliably.
+Dates are validated against the calendar: `2024-02-29` is valid, but
+`2019-02-29` is rejected without adding or saving a task.
+
+This increment supports dates without a time of day. Older free-text deadline
+values such as `June 6th` need to be changed to complete ISO dates in the saved
+file. Nova identifies the affected line and stops without altering the file;
+it does not guess a missing year. Event start and end values remain text.
 
 ## Class responsibilities and console regression tests
 
@@ -63,8 +82,9 @@ java -cp out/tests nova.ConsoleTest
 
 The console suite launches Nova in temporary folders and checks exact output and
 saved data for task commands, invalid input, restarts, end-of-input, and corrupt
-saves. It also accepts a compiled-classes folder as an argument to check an earlier
-build against the same expectations.
+saves, plus deadline validation and date persistence. It also accepts a
+compiled-classes folder as an argument to check another build against the same
+expectations.
 
 ## Setting up in Intellij
 

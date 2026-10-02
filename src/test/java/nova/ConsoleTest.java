@@ -34,30 +34,32 @@ public class ConsoleTest {
             testRestart(folder.resolve("restart"), classes);
             testEndOfInput(folder.resolve("eof"), classes);
             testCorruptSave(folder.resolve("corrupt"), classes);
-            System.out.println("All 5 console scenarios passed (exact transcripts and saved files).");
+            testDeadlineDates(folder.resolve("deadline-dates"), classes);
+            testInvalidSavedDates(folder.resolve("invalid-saved-dates"), classes);
+            System.out.println("All 7 console scenarios passed (exact transcripts and saved files).");
         } finally {
             deleteTestFolder(folder);
         }
     }
 
     private static void testTaskCommands(Path folder, String classes) throws Exception {
-        String commands = "list\ntodo read book\ndeadline return book /by June 6th\n"
+        String commands = "list\ntodo read book\ndeadline return book /by 2019-10-15\n"
                 + "event meeting /from 2pm /to 4pm\nmark 2\nunmark 2\ndelete 1\nlist\nbye\n"
                 + "todo must not run\n";
         String expected = session(true,
                 " Here are the tasks in your list:\n",
                 " Got it. I've added this task:\n   [T][ ] read book\n Now you have 1 tasks in the list.\n",
-                " Got it. I've added this task:\n   [D][ ] return book (by: June 6th)\n"
+                " Got it. I've added this task:\n   [D][ ] return book (by: Oct 15 2019)\n"
                         + " Now you have 2 tasks in the list.\n",
                 " Got it. I've added this task:\n   [E][ ] meeting (from: 2pm to: 4pm)\n"
                         + " Now you have 3 tasks in the list.\n",
-                " Nice! I've marked this task as done:\n   [D][X] return book (by: June 6th)\n",
-                " OK, I've marked this task as not done yet:\n   [D][ ] return book (by: June 6th)\n",
+                " Nice! I've marked this task as done:\n   [D][X] return book (by: Oct 15 2019)\n",
+                " OK, I've marked this task as not done yet:\n   [D][ ] return book (by: Oct 15 2019)\n",
                 " Noted. I've removed this task:\n   [T][ ] read book\n Now you have 2 tasks in the list.\n",
-                " Here are the tasks in your list:\n 1.[D][ ] return book (by: June 6th)\n"
+                " Here are the tasks in your list:\n 1.[D][ ] return book (by: Oct 15 2019)\n"
                         + " 2.[E][ ] meeting (from: 2pm to: 4pm)\n");
         checkEquals(expected, runNova(folder, classes, commands), "Task command transcript");
-        checkEquals("D|0|return book|June 6th\nE|0|meeting|2pm|4pm\n",
+        checkEquals("D|0|return book|2019-10-15\nE|0|meeting|2pm|4pm\n",
                 Files.readString(folder.resolve("data/nova.txt")), "Saved tasks after deletion");
     }
 
@@ -68,7 +70,7 @@ public class ConsoleTest {
                 " OOPS! Please enter a command.\n",
                 " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, unmark, or delete.\n",
                 " OOPS! The todo description cannot be empty.\n",
-                " OOPS! A deadline must follow this format: deadline <description> /by <date or time>.\n",
+                " OOPS! A deadline must follow this format: deadline <description> /by yyyy-MM-dd.\n",
                 " OOPS! An event must follow this format: event <description> /from <start> /to <end>.\n",
                 " OOPS! Please provide the number of the task to update.\n",
                 " OOPS! The task number must be a valid whole number.\n",
@@ -115,6 +117,49 @@ public class ConsoleTest {
         checkEquals(expected, runNova(folder, classes, "todo must not overwrite\nbye\n"),
                 "Loading error transcript");
         checkEquals(corrupt, Files.readString(file), "Corrupt data must stay intact");
+    }
+
+    /**
+     * Rejects invalid input without creating a save, then checks a valid leap date across a restart.
+     */
+    private static void testDeadlineDates(Path folder, String classes) throws Exception {
+        String error = " OOPS! Please enter a valid deadline date in yyyy-MM-dd format (e.g., 2019-10-15).\n";
+        checkEquals(session(true, error, error, error, " Here are the tasks in your list:\n"),
+                runNova(folder, classes, "deadline bad date /by 2019-02-29\n"
+                        + "deadline missing year /by June 6th\ndeadline timed /by 2/12/2019 1800\nlist\nbye\n"),
+                "Invalid deadline dates must produce helpful errors");
+        if (Files.exists(folder.resolve("data/nova.txt"))) {
+            throw new AssertionError("Invalid date commands must not create a save file.");
+        }
+        checkEquals(session(true,
+                " Got it. I've added this task:\n   [D][ ] leap day (by: Feb 29 2024)\n"
+                        + " Now you have 1 tasks in the list.\n",
+                " Nice! I've marked this task as done:\n   [D][X] leap day (by: Feb 29 2024)\n"),
+                runNova(folder, classes, "deadline leap day /by 2024-02-29\nmark 1\nbye\n"),
+                "Valid leap date transcript");
+        checkEquals("D|1|leap day|2024-02-29\n", Files.readString(folder.resolve("data/nova.txt")),
+                "Save the ISO date and completion status");
+        checkEquals(session(true, " Here are the tasks in your list:\n 1.[D][X] leap day (by: Feb 29 2024)\n"),
+                runNova(folder, classes, "list\nbye\n"), "Reload the formatted date and completion status");
+    }
+
+    /**
+     * Reports the line containing an impossible or legacy date and preserves the entire save.
+     */
+    private static void testInvalidSavedDates(Path folder, String classes) throws Exception {
+        Path file = folder.resolve("data/nova.txt");
+        Files.createDirectories(file.getParent());
+        String expected = WELCOME + " OOPS! Could not load saved task in " + Path.of("data", "nova.txt")
+                + " at line 2: Deadline date must be a valid date in yyyy-MM-dd format (e.g., 2019-10-15).\n"
+                + " Please fix the saved file or its permissions and restart Nova.\n"
+                + " Your file was not changed.\n" + DIVIDER;
+        for (String date : new String[] {"2019-02-29", "June 6th"}) {
+            String contents = "T|0|keep me\nD|0|return book|" + date + "\n";
+            Files.writeString(file, contents);
+            checkEquals(expected, runNova(folder, classes, "todo must not overwrite\nbye\n"),
+                    "Invalid saved date transcript");
+            checkEquals(contents, Files.readString(file), "Invalid saved dates must stay intact");
+        }
     }
 
     /**

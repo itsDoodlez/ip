@@ -5,8 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import nova.command.AddCommand;
 import nova.command.Command;
@@ -26,10 +28,12 @@ public class StorageTest {
     public static void main(String[] args) throws Exception {
         Path testFolder = Files.createTempDirectory("nova-storage-test-");
         try (Ui ui = new Ui()) {
+            testDeadlineDisplay();
             testMissingAndEmptyFiles(testFolder.resolve("missing"));
             testRoundTrip(testFolder.resolve("round-trip"));
             testCommands(testFolder.resolve("commands"), ui);
             testPreparedAddCommands(testFolder.resolve("prepared-additions"), ui);
+            testDeadlineDates(testFolder.resolve("deadline-dates"), ui);
             testCorruptFiles(testFolder.resolve("corrupt"));
             testDynamicCapacity(testFolder.resolve("capacity"), ui);
             testIoErrors(testFolder.resolve("errors"), ui);
@@ -54,7 +58,7 @@ public class StorageTest {
         Storage storage = new Storage(folder.resolve("data").resolve("nova.txt"));
         TaskList original = new TaskList();
         original.addTask(new Todo("read | book\\notes\n中文\rnext line"));
-        original.addTask(new Deadline("return book", "June 6th | evening\\night"));
+        original.addTask(new Deadline("return | book\\notes", LocalDate.of(2019, 10, 15)));
         original.addTask(new Event("meeting", "Aug 6th 2pm\\start", "Aug 6th 4pm | end"));
         original.getTask(1).markAsDone();
         original.getTask(3).markAsDone();
@@ -69,7 +73,7 @@ public class StorageTest {
         CountingStorage storage = new CountingStorage(file);
         TaskList tasks = new TaskList();
         CommandHandler handler = new CommandHandler(tasks, storage, ui);
-        List<String> changes = List.of("todo read book", "deadline return book /by June 6th",
+        List<String> changes = List.of("todo read book", "deadline return book /by 2019-10-15",
                 "event meeting /from 2pm /to 4pm", "mark 1", "unmark 1", "mark 2", "mark 3", "delete 1");
         for (String command : changes) {
             int previousSaveCalls = storage.saveCalls;
@@ -103,7 +107,7 @@ public class StorageTest {
     private static void testPreparedAddCommands(Path folder, Ui ui) throws Exception {
         CountingStorage storage = new CountingStorage(folder.resolve("nova.txt"));
         TaskList tasks = new TaskList();
-        List<Task> additions = List.of(new Todo("read book"), new Deadline("return book", "June 6th"),
+        List<Task> additions = List.of(new Todo("read book"), new Deadline("return book", LocalDate.of(2019, 10, 15)),
                 new Event("meeting", "2pm", "4pm"));
         for (Task task : additions) {
             int previousCount = tasks.getTaskCount();
@@ -119,12 +123,64 @@ public class StorageTest {
         }
     }
 
+    /**
+     * Checks real calendar validation, typed dates, stable display, and ISO persistence.
+     */
+    private static void testDeadlineDates(Path folder, Ui ui) throws Exception {
+        Path file = folder.resolve("nova.txt");
+        CountingStorage storage = new CountingStorage(file);
+        TaskList tasks = new TaskList();
+        CommandHandler handler = new CommandHandler(tasks, storage, ui);
+        List<LocalDate> dates = List.of(LocalDate.of(2019, 10, 15), LocalDate.of(2000, 2, 29),
+                LocalDate.of(2024, 2, 29));
+        for (LocalDate date : dates) {
+            handler.handleCommand("deadline return book /by " + date);
+            Deadline deadline = (Deadline) tasks.getTask(tasks.getTaskCount());
+            check(date.equals(deadline.getBy()), "The task must hold a LocalDate matching the input.");
+            Deadline reloaded = (Deadline) storage.load().getTask(tasks.getTaskCount());
+            check(date.equals(reloaded.getBy()), "Reloading must preserve the typed date.");
+        }
+        check(Files.readAllLines(file).equals(List.of("D|0|return book|2019-10-15",
+                "D|0|return book|2000-02-29", "D|0|return book|2024-02-29")),
+                "Storage must use ISO dates rather than the display format.");
+
+        String saved = Files.readString(file);
+        for (String invalid : List.of("2019-02-29", "1900-02-29", "2019-04-31", "2019-13-01",
+                "2019-00-10", "2019-10-00", "2019-2-03", "15/10/2019", "June 6th", "2019-10-15 1800")) {
+            try {
+                handler.handleCommand("deadline invalid /by " + invalid);
+                throw new AssertionError("Expected an invalid deadline date error: " + invalid);
+            } catch (NovaException e) {
+                check(e.getMessage().contains("yyyy-MM-dd"), "Explain the expected deadline date format.");
+                check(tasks.getTaskCount() == dates.size(), "Invalid dates must not add tasks.");
+                check(storage.saveCalls == dates.size(), "Invalid dates must not attempt to save.");
+                check(saved.equals(Files.readString(file)), "Invalid dates must leave saved data intact.");
+            }
+        }
+    }
+
+    /**
+     * Initializes the deadline formatter under a non-English locale to check stable month names.
+     */
+    private static void testDeadlineDisplay() {
+        Locale originalLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.FRENCH);
+            Deadline deadline = new Deadline("return book", LocalDate.of(2019, 10, 15));
+            check(deadline.toString().equals("[D][ ] return book (by: Oct 15 2019)"),
+                    "Display English month names even when the default locale is different.");
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
+    }
+
     private static void testCorruptFiles(Path folder) throws Exception {
         Files.createDirectories(folder);
         Path file = folder.resolve("nova.txt");
         Storage storage = new Storage(file);
         List<String> invalidLines = List.of("", "X|0|unknown", "T|2|bad status", "T|0",
                 "T|0|", "T|0|extra|field", "D|0|missing date", "D|0|blank date| ",
+                "D|0|invalid date|2019-02-29", "D|0|legacy date|June 6th",
                 "E|0|missing end|2pm", "E|0|blank end|2pm|", "T|0|bad\\q", "T|0|trailing\\");
         for (String invalidLine : invalidLines) {
             String contents = "T|1|valid task\n" + invalidLine + "\n";
@@ -202,11 +258,11 @@ public class StorageTest {
      */
     private static void testRestart(Path folder) throws Exception {
         Files.createDirectories(folder);
-        runNova(folder, "todo read book\ndeadline return book /by June 6th\n"
+        runNova(folder, "todo read book\ndeadline return book /by 2019-10-15\n"
                 + "event meeting /from 2pm /to 4pm\nmark 2\nbye\n");
         String output = runNova(folder, "list\nbye\n");
         check(output.contains("1.[T][ ] read book"), "Reload the todo on startup.");
-        check(output.contains("2.[D][X] return book (by: June 6th)"), "Reload the completed deadline.");
+        check(output.contains("2.[D][X] return book (by: Oct 15 2019)"), "Reload the completed deadline.");
         check(output.contains("3.[E][ ] meeting (from: 2pm to: 4pm)"), "Reload both event times.");
         runNova(folder, "unmark 2\nbye\n");
         output = runNova(folder, "list\nbye\n");
@@ -252,6 +308,9 @@ public class StorageTest {
             Task actualTask = actual.getTask(i);
             check(expectedTask.getClass().equals(actualTask.getClass()), "Preserve each task's type.");
             check(expectedTask.toString().equals(actualTask.toString()), "Preserve all task fields and status.");
+            if (expectedTask instanceof Deadline expectedDeadline && actualTask instanceof Deadline actualDeadline) {
+                check(expectedDeadline.getBy().equals(actualDeadline.getBy()), "Preserve the deadline's LocalDate.");
+            }
         }
     }
 
