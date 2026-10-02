@@ -11,6 +11,9 @@ import nova.exception.NovaException;
 public class TaskList {
     private final List<Task> tasks;
 
+    /**
+     * Creates an empty task list that grows as tasks are added.
+     */
     public TaskList() {
         tasks = new ArrayList<>();
     }
@@ -48,6 +51,11 @@ public class TaskList {
         return tasks.remove(taskNumber - 1);
     }
 
+    /**
+     * Counts all tasks, including completed tasks.
+     *
+     * @return the number of tasks currently stored
+     */
     public int getTaskCount() {
         return tasks.size();
     }

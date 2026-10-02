@@ -23,6 +23,9 @@ public class ConsoleTest {
 
     /**
      * Accepts an optional compiled-classes folder to test an earlier build too.
+     *
+     * @param args optional path to the compiled classes; defaults to the current classpath
+     * @throws Exception if test setup, execution, or cleanup fails
      */
     public static void main(String[] args) throws Exception {
         String classes = Path.of(args.length == 0 ? System.getProperty("java.class.path") : args[0])
@@ -38,12 +41,16 @@ public class ConsoleTest {
             testInvalidSavedDates(folder.resolve("invalid-saved-dates"), classes);
             testFindTasks(folder.resolve("find"), classes);
             testEmptyFind(folder.resolve("empty-find"), classes);
-            System.out.println("All 9 console scenarios passed (exact transcripts and saved files).");
+            testMissingEventStart(folder.resolve("missing-event-start"), classes);
+            System.out.println("All 10 console scenarios passed (exact transcripts and saved files).");
         } finally {
             deleteTestFolder(folder);
         }
     }
 
+    /**
+     * Checks task changes, list output, and saved data through a complete console session.
+     */
     private static void testTaskCommands(Path folder, String classes) throws Exception {
         String commands = "list\ntodo read book\ndeadline return book /by 2019-10-15\n"
                 + "event meeting /from 2pm /to 4pm\nmark 2\nunmark 2\ndelete 1\nlist\nbye\n"
@@ -65,6 +72,9 @@ public class ConsoleTest {
                 Files.readString(folder.resolve("data/nova.txt")), "Saved tasks after deletion");
     }
 
+    /**
+     * Checks error messages for invalid commands and verifies that saved tasks remain intact.
+     */
     private static void testInvalidCommands(Path folder, String classes) throws Exception {
         String commands = "\nunknown\ntodo\ndeadline missing date\nevent missing times\n"
                 + "mark\nunmark abc\ndelete\nmark 1\ntodo keep me\nmark 0\ndelete 2\nbye\n";
@@ -86,6 +96,9 @@ public class ConsoleTest {
                 "Invalid commands must preserve the saved task");
     }
 
+    /**
+     * Checks that completed tasks reload and deleting the final task leaves an empty save.
+     */
     private static void testRestart(Path folder, String classes) throws Exception {
         runNova(folder, classes, "todo remember me\nmark 1\nbye\n");
         checkEquals(session(true, " Here are the tasks in your list:\n 1.[T][X] remember me\n"),
@@ -97,6 +110,9 @@ public class ConsoleTest {
         checkEquals("", Files.readString(folder.resolve("data/nova.txt")), "Empty saved list");
     }
 
+    /**
+     * Checks clean shutdown at end-of-input, including a final line without a newline.
+     */
     private static void testEndOfInput(Path folder, String classes) throws Exception {
         checkEquals(session(false), runNova(folder, classes, ""), "Empty input exits cleanly");
         checkEquals(session(false, " Here are the tasks in your list:\n"),
@@ -107,6 +123,9 @@ public class ConsoleTest {
         }
     }
 
+    /**
+     * Checks that corrupt saves stop startup with a useful error and remain unchanged.
+     */
     private static void testCorruptSave(Path folder, String classes) throws Exception {
         Path file = folder.resolve("data/nova.txt");
         Files.createDirectories(file.getParent());
@@ -211,7 +230,26 @@ public class ConsoleTest {
     }
 
     /**
+     * Checks adjacent event separators without a start value and recovery on the next command.
+     */
+    private static void testMissingEventStart(Path folder, String classes) throws Exception {
+        String error = " OOPS! The event start cannot be empty.\n";
+        checkEquals(session(true, error, error,
+                " Got it. I've added this task:\n   [T][ ] still running\n Now you have 1 tasks in the list.\n",
+                " Here are the tasks in your list:\n 1.[T][ ] still running\n"),
+                runNova(folder, classes, "event meeting /from /to 4pm\n"
+                        + "event meeting /from  /to 4pm\ntodo still running\nlist\nbye\n"),
+                "An empty event start must not crash the command loop");
+        checkEquals("T|0|still running\n", Files.readString(folder.resolve("data/nova.txt")),
+                "Rejected events must not be saved");
+    }
+
+    /**
      * Builds the expected transcript, including the extra divider printed for bye.
+     *
+     * @param endsWithBye whether the session ends with an explicit exit command
+     * @param responses command responses without surrounding dividers
+     * @return the full expected console transcript
      */
     private static String session(boolean endsWithBye, String... responses) {
         StringBuilder expected = new StringBuilder(WELCOME);
@@ -227,6 +265,13 @@ public class ConsoleTest {
     /**
      * Runs the real CLI in an isolated directory using the same Java runtime as the test.
      * Redirecting output to a file prevents a full output pipe from blocking the child.
+     *
+     * @param folder the temporary working directory for the child process
+     * @param classes the absolute path to the compiled classes
+     * @param commands input lines sent to Nova
+     * @return the captured console output
+     * @throws Exception if process startup, communication, or cleanup fails
+     * @throws AssertionError if Nova times out or exits with an error
      */
     private static String runNova(Path folder, String classes, String commands) throws Exception {
         Files.createDirectories(folder);
@@ -255,6 +300,11 @@ public class ConsoleTest {
 
     /**
      * Ignores only platform line-ending differences; spaces and blank lines must match.
+     *
+     * @param expected the required text
+     * @param actual the text produced by the application or save file
+     * @param label description of the check included in failure messages
+     * @throws AssertionError if the texts differ after normalizing line endings
      */
     private static void checkEquals(String expected, String actual, String label) {
         if (!expected.replace("\r\n", "\n").equals(actual.replace("\r\n", "\n"))) {
@@ -264,6 +314,9 @@ public class ConsoleTest {
 
     /**
      * Deletes only the temporary directory created by this test run, children first.
+     *
+     * @param folder the temporary test directory to remove
+     * @throws IOException if the directory cannot be traversed or an entry cannot be deleted
      */
     private static void deleteTestFolder(Path folder) throws IOException {
         try (var paths = Files.walk(folder)) {

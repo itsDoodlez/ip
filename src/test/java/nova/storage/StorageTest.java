@@ -25,6 +25,12 @@ import nova.ui.Ui;
  * Runs persistence regression tests with Java alone, using isolated temporary folders.
  */
 public class StorageTest {
+    /**
+     * Runs the persistence checks and removes their temporary files afterward.
+     *
+     * @param args command-line arguments, which are not used
+     * @throws Exception if test setup, execution, or cleanup fails
+     */
     public static void main(String[] args) throws Exception {
         Path testFolder = Files.createTempDirectory("nova-storage-test-");
         try (Ui ui = new Ui()) {
@@ -44,6 +50,9 @@ public class StorageTest {
         }
     }
 
+    /**
+     * Checks that missing folders, missing files, and empty files all load an empty list.
+     */
     private static void testMissingAndEmptyFiles(Path folder) throws Exception {
         Path file = folder.resolve("data").resolve("nova.txt");
         Storage storage = new Storage(file);
@@ -54,6 +63,9 @@ public class StorageTest {
         check(storage.load().getTaskCount() == 0, "An empty file should load an empty list.");
     }
 
+    /**
+     * Checks that all task types, completion states, and escaped text survive saving and loading.
+     */
     private static void testRoundTrip(Path folder) throws Exception {
         Storage storage = new Storage(folder.resolve("data").resolve("nova.txt"));
         TaskList original = new TaskList();
@@ -68,6 +80,9 @@ public class StorageTest {
         check(storage.load().getTaskCount() == 0, "Saving an empty list must remove old tasks.");
     }
 
+    /**
+     * Checks that task changes save once, while read-only and invalid commands never save.
+     */
     private static void testCommands(Path folder, Ui ui) throws Exception {
         Path file = folder.resolve("nova.txt");
         CountingStorage storage = new CountingStorage(file);
@@ -177,6 +192,9 @@ public class StorageTest {
         }
     }
 
+    /**
+     * Checks that malformed task lines and invalid UTF-8 are rejected without rewriting the file.
+     */
     private static void testCorruptFiles(Path folder) throws Exception {
         Files.createDirectories(folder);
         Path file = folder.resolve("nova.txt");
@@ -219,6 +237,9 @@ public class StorageTest {
         check(storage.load().getTask(101).isDone(), "Tasks beyond 100 must support saving updates.");
     }
 
+    /**
+     * Checks error reporting, in-memory recovery, and file preservation when storage operations fail.
+     */
     private static void testIoErrors(Path folder, Ui ui) throws Exception {
         Files.createDirectories(folder);
         Path blockedFolder = folder.resolve("blocked");
@@ -279,6 +300,15 @@ public class StorageTest {
         check(corrupt.equals(Files.readString(file)), "Startup must protect corrupt data from overwrites.");
     }
 
+    /**
+     * Starts Nova in a temporary working directory using the test's Java runtime and classpath.
+     *
+     * @param folder the child process's working directory
+     * @param commands input lines sent to Nova
+     * @return the combined standard output and error output
+     * @throws Exception if process startup or communication fails, or waiting is interrupted
+     * @throws AssertionError if Nova exits with an error
+     */
     private static String runNova(Path folder, String commands) throws Exception {
         String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         String classes = Path.of(System.getProperty("java.class.path")).toAbsolutePath().toString();
@@ -295,6 +325,14 @@ public class StorageTest {
         return output;
     }
 
+    /**
+     * Checks that loading fails with an error containing the expected explanation.
+     *
+     * @param storage the storage instance whose save file should be rejected
+     * @param expectedMessage the required part of the error message
+     * @throws Exception if an unexpected error interrupts the check
+     * @throws AssertionError if loading succeeds or the expected explanation is missing
+     */
     private static void checkLoadRejected(Storage storage, String expectedMessage) throws Exception {
         try {
             storage.load();
@@ -304,6 +342,14 @@ public class StorageTest {
         }
     }
 
+    /**
+     * Compares task order, types, displayed fields, and typed deadline dates after loading.
+     *
+     * @param expected the original task list
+     * @param actual the loaded task list
+     * @throws Exception if a task cannot be retrieved
+     * @throws AssertionError if the lists differ
+     */
     private static void checkSameTasks(TaskList expected, TaskList actual) throws Exception {
         check(expected.getTaskCount() == actual.getTaskCount(), "The saved task count must match.");
         for (int i = 1; i <= expected.getTaskCount(); i++) {
@@ -317,6 +363,13 @@ public class StorageTest {
         }
     }
 
+    /**
+     * Fails a test when its expected condition is false, without requiring JVM assertion flags.
+     *
+     * @param condition the condition that must hold
+     * @param message the explanation to include on failure
+     * @throws AssertionError if the condition is false
+     */
     private static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
@@ -329,10 +382,21 @@ public class StorageTest {
     private static class CountingStorage extends Storage {
         private int saveCalls;
 
+        /**
+         * Creates storage that counts save attempts to the supplied test file.
+         *
+         * @param filePath the temporary save file used by the test
+         */
         CountingStorage(Path filePath) {
             super(filePath);
         }
 
+        /**
+         * Counts this save attempt before delegating to the real storage implementation.
+         *
+         * @param tasks the tasks to save
+         * @throws NovaException if saving fails
+         */
         @Override
         public void save(TaskList tasks) throws NovaException {
             saveCalls++;
@@ -342,6 +406,9 @@ public class StorageTest {
 
     /**
      * Deletes only the temporary directory created by this test run, children first.
+     *
+     * @param folder the temporary test directory to remove
+     * @throws IOException if the directory cannot be traversed or an entry cannot be deleted
      */
     private static void deleteTestFolder(Path folder) throws IOException {
         try (var paths = Files.walk(folder)) {

@@ -13,29 +13,56 @@ import nova.task.TaskList;
  */
 public class Ui implements AutoCloseable {
     private static final String DIVIDER = "____________________________________________________________\n";
-    private static final String BANNER = " _  _              \n"
-            + "| \\| |___ ___ __ _ \n"
-            + "| .` / _ \\ V  V / _` |\n"
-            + "|_|\\_\\___/\\_/\\_/\\__,_|\n";
+    private static final String BANNER =
+            ",---.   .--.    ,-----.    ,---.  ,---.   ____     \n"
+                    + "|    \\  |  |  .'  .-,  '.  |   /  |   | .'  __ `.  \n"
+                    + "|  ,  \\ |  | / ,-.|  \\ _ \\ |  |   |  .'/   '  \\  \\ \n"
+                    + "|  |\\_ \\|  |;  \\  '_ /  | :|  | _ |  | |___|  /  | \n"
+                    + "|  _( )_\\  ||  _`,/ \\ _/  ||  _( )_  |    _.-`   | \n"
+                    + "| (_ o _)  |: (  '\\_/ \\   ;\\ (_ o._) /  .'   _    |\n"
+                    + "|  (_,_)\\  | \\ `\"/  \\  ) /  \\ (_,_) /   |  _( )_  |\n"
+                    + "|  |    |  |  '. \\_/``\".'    \\     /    \\ (_ o _) /\n"
+                    + "'--'    '--'    '-----'       `---`      '.(_,_).' \n";
 
     private final Scanner scanner;
 
+    /**
+     * Creates a console reader backed by standard input.
+     */
     public Ui() {
         scanner = new Scanner(System.in);
     }
 
+    /**
+     * Checks for another input line, waiting for input if necessary.
+     *
+     * @return {@code true} if another command line is available, or {@code false} at end-of-input
+     */
     public boolean hasNextCommand() {
         return scanner.hasNextLine();
     }
 
+    /**
+     * Reads one complete input line without trimming spaces.
+     * Call {@link #hasNextCommand()} first to check that input is available.
+     *
+     * @return the next command line without its line separator
+     * @throws java.util.NoSuchElementException if input has ended
+     */
     public String readCommand() {
         return scanner.nextLine();
     }
 
+    /**
+     * Prints the horizontal line that separates console responses.
+     */
     public void showDivider() {
         System.out.print(DIVIDER);
     }
 
+    /**
+     * Displays Nova's banner, greeting, and opening prompt between dividers.
+     */
     public void showWelcome() {
         showDivider();
         System.out.println(BANNER);
@@ -44,11 +71,19 @@ public class Ui implements AutoCloseable {
         showDivider();
     }
 
+    /**
+     * Displays the farewell message and a closing divider.
+     */
     public void showGoodbye() {
         System.out.println("Bye. Hope to see you again soon!");
         showDivider();
     }
 
+    /**
+     * Displays an error message supplied by command handling or storage.
+     *
+     * @param message the explanation to show to the user
+     */
     public void showError(String message) {
         System.out.println(message);
     }
@@ -95,12 +130,24 @@ public class Ui implements AutoCloseable {
         }
     }
 
+    /**
+     * Confirms an addition and displays the updated number of tasks.
+     *
+     * @param task the task that was added
+     * @param taskCount the total number of tasks after the addition
+     */
     public void showTaskAdded(Task task, int taskCount) {
         System.out.println(" Got it. I've added this task:");
         System.out.println("   " + task);
         showTaskCount(taskCount);
     }
 
+    /**
+     * Confirms a removal and displays the number of tasks remaining.
+     *
+     * @param task the task that was removed
+     * @param taskCount the total number of tasks after the removal
+     */
     public void showTaskRemoved(Task task, int taskCount) {
         System.out.println(" Noted. I've removed this task:");
         System.out.println("   " + task);
@@ -119,10 +166,18 @@ public class Ui implements AutoCloseable {
         System.out.println("   " + task);
     }
 
+    /**
+     * Displays the list size after an addition or removal.
+     *
+     * @param taskCount the current total number of tasks
+     */
     private void showTaskCount(int taskCount) {
         System.out.println(" Now you have " + taskCount + " tasks in the list.");
     }
 
+    /**
+     * Closes the input scanner and its underlying standard input stream.
+     */
     @Override
     public void close() {
         scanner.close();

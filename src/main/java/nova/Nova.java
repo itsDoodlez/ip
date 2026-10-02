@@ -15,6 +15,12 @@ public class Nova {
 
     private static final String EXIT_COMMAND = "bye";
 
+    /**
+     * Loads saved tasks and starts the console session.
+     * Stops before accepting commands if the saved tasks cannot be loaded safely.
+     *
+     * @param args command-line arguments, which are not used
+     */
     public static void main(String[] args) {
         try (Ui ui = new Ui()) {
             ui.showWelcome();
@@ -35,7 +41,7 @@ public class Nova {
     }
 
     /**
-     * Reads and handles commands until the user enters the exit command.
+     * Reads and handles commands until the user enters the exit command or input ends.
      *
      * @param ui reads commands and displays feedback
      * @param commandHandler processes each command

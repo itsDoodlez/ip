@@ -32,6 +32,13 @@ public class CommandHandler {
     private final Storage storage;
     private final Ui ui;
 
+    /**
+     * Connects command handling to the session's tasks, storage, and console.
+     *
+     * @param taskList the tasks that commands read or modify
+     * @param storage saves successful task changes
+     * @param ui displays command results
+     */
     public CommandHandler(TaskList taskList, Storage storage, Ui ui) {
         this.taskList = taskList;
         this.storage = storage;
@@ -101,10 +108,22 @@ public class CommandHandler {
         ui.showMatchingTasks(taskList.findTasks(keyword));
     }
 
+    /**
+     * Marks the selected task as done and displays confirmation.
+     *
+     * @param command the complete mark command
+     * @throws NovaException if the task number is missing, invalid, or out of range
+     */
     private void markTask(String command) throws NovaException {
         updateTaskStatus(command, MARK_COMMAND, true);
     }
 
+    /**
+     * Marks the selected task as incomplete and displays confirmation.
+     *
+     * @param command the complete unmark command
+     * @throws NovaException if the task number is missing, invalid, or out of range
+     */
     private void unmarkTask(String command) throws NovaException {
         updateTaskStatus(command, UNMARK_COMMAND, false);
     }
@@ -128,6 +147,7 @@ public class CommandHandler {
      * @param command the complete mark or unmark command
      * @param commandPrefix the prefix used by the command
      * @param shouldBeDone whether the task should be marked as done
+     * @throws NovaException if the task number is missing, invalid, or out of range
      */
     private void updateTaskStatus(String command, String commandPrefix,
             boolean shouldBeDone) throws NovaException {
@@ -171,6 +191,10 @@ public class CommandHandler {
 
     /**
      * Validates a todo description and prepares its addition without executing it.
+     *
+     * @param command the complete todo command
+     * @return an addition containing the parsed todo
+     * @throws NovaException if the description is blank
      */
     private Command parseTodo(String command) throws NovaException {
         String description = command.equals(TODO_COMMAND.trim())
@@ -183,6 +207,10 @@ public class CommandHandler {
 
     /**
      * Parses the deadline's description and date into a command ready to execute.
+     *
+     * @param command the complete deadline command
+     * @return an addition containing the parsed deadline
+     * @throws NovaException if a required field is missing or the date is invalid
      */
     private Command parseDeadline(String command) throws NovaException {
         String content = command.equals(DEADLINE_COMMAND.trim())
@@ -210,6 +238,10 @@ public class CommandHandler {
 
     /**
      * Parses the event's description and time range into a command ready to execute.
+     *
+     * @param command the complete event command
+     * @return an addition containing the parsed event
+     * @throws NovaException if a required field or separator is missing or out of order
      */
     private Command parseEvent(String command) throws NovaException {
         String content = command.equals(EVENT_COMMAND.trim())
@@ -224,8 +256,9 @@ public class CommandHandler {
         }
 
         String description = content.substring(0, fromIndex).trim();
-        String from = content.substring(
-                fromIndex + FROM_SEPARATOR.length(), toIndex).trim();
+        int startIndex = fromIndex + FROM_SEPARATOR.length();
+        // Adjacent separators share a space, so /to can begin before startIndex.
+        String from = toIndex < startIndex ? "" : content.substring(startIndex, toIndex).trim();
         String to = content.substring(toIndex + TO_SEPARATOR.length()).trim();
         validateText(description, "event description");
         validateText(from, "event start");

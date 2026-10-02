@@ -26,6 +26,11 @@ import nova.task.Todo;
 public class Storage {
     private final Path filePath;
 
+    /**
+     * Selects the save file without reading or creating it yet.
+     *
+     * @param filePath the file used by subsequent load and save operations
+     */
     public Storage(Path filePath) {
         this.filePath = filePath;
     }
@@ -98,6 +103,10 @@ public class Storage {
 
     /**
      * Converts a task to type, status, description, and any date/time fields.
+     *
+     * @param task the task to serialize
+     * @return one pipe-separated save line with text fields escaped
+     * @throws NovaException if the task type is unsupported
      */
     private String formatTask(Task task) throws NovaException {
         String details = "|" + (task.isDone() ? "1" : "0") + "|" + escape(task.getDescription());
@@ -113,6 +122,10 @@ public class Storage {
 
     /**
      * Reconstructs a task after validating its type, status, and required fields.
+     *
+     * @param line a complete saved task line
+     * @return the restored task, including its completion status
+     * @throws IllegalArgumentException if any field or escape sequence is invalid
      */
     private Task parseTask(String line) {
         List<String> fields = splitFields(line);
@@ -154,6 +167,10 @@ public class Storage {
     /**
      * Reads a saved ISO date and rejects invalid or older free-text deadline values.
      * The caller adds the file name and line number to this error without changing the file.
+     *
+     * @param text the saved deadline date in {@code yyyy-MM-dd} format
+     * @return the parsed calendar date
+     * @throws IllegalArgumentException if the text is not a valid ISO date
      */
     private LocalDate parseDeadlineDate(String text) {
         try {
@@ -166,6 +183,9 @@ public class Storage {
 
     /**
      * Escapes characters that would otherwise be mistaken for file separators.
+     *
+     * @param text the original field value
+     * @return the field with backslashes, pipes, and line breaks escaped
      */
     private String escape(String text) {
         return text.replace("\\", "\\\\").replace("|", "\\|")
@@ -175,6 +195,10 @@ public class Storage {
     /**
      * Splits a saved line while decoding escaped pipes, backslashes, and line breaks.
      * Rejects invalid escapes instead of silently changing the saved text.
+     *
+     * @param line the saved line to split
+     * @return decoded fields in their original order, including empty fields
+     * @throws IllegalArgumentException if an escape sequence is invalid or incomplete
      */
     private List<String> splitFields(String line) {
         List<String> fields = new ArrayList<>();

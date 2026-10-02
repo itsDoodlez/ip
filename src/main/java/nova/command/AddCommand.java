@@ -24,6 +24,11 @@ public class AddCommand extends Command {
     /**
      * Adds the task, shows confirmation, and saves the updated list once.
      * A failed save leaves the addition in memory, matching Nova's existing behavior.
+     *
+     * @param tasks the list to which the prepared task is added
+     * @param ui displays the added task and updated list size
+     * @param storage saves the updated list
+     * @throws NovaException if the updated list cannot be saved
      */
     @Override
     public void execute(TaskList tasks, Ui ui, Storage storage) throws NovaException {

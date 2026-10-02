@@ -89,13 +89,14 @@ Creating a command prepares the action; calling `execute` performs it.
 run in `CommandHandler`. Later increments will extract more command subclasses and
 move parsing into `Parser`, allowing the main loop to execute commands uniformly.
 
-To compile all sources and run both regression suites in PowerShell with JDK 25:
+To compile all sources and run the regression suites in PowerShell with JDK 25:
 
 ```powershell
 $sources = Get-ChildItem src/main/java, src/test/java -Recurse -Filter *.java
 javac -Xlint:all -d out/tests $sources.FullName
 java -cp out/tests nova.storage.StorageTest
 java -cp out/tests nova.ConsoleTest
+java -cp out/tests nova.SystematicTest
 ```
 
 The console suite launches Nova in temporary folders and checks exact output and
@@ -103,6 +104,37 @@ saved data for task commands, invalid input, restarts, end-of-input, and corrupt
 saves, plus deadline validation and date persistence. It also accepts a
 compiled-classes folder as an argument to check another build against the same
 expectations.
+
+`SystematicTest` adds an independent task model and checks exact responses, task
+fields and order, save counts, saved contents, and reloads. Its coverage includes:
+
+- All ordered pairs and triples of the eight task commands, including repeats,
+  across six starting states and first/last task selection: 6,912 scenarios.
+- All 81 pairs and 729 triples of the nine console commands, including `bye`,
+  in separate Java processes. Commands after `bye` must be ignored.
+- 10,000 reproducible mixed operations and 13,456 generated input checks,
+  including malformed separators, invalid commands, and recovery after errors.
+- Number overflow, missing fields, case and whitespace rules, leap centuries,
+  Unicode, long descriptions, duplicates, search scope, and more than 100 tasks.
+- Corrupt files, escaping, line endings, end-of-input, restarts, and failed saves
+  followed by recovery for every modifying command.
+
+The console matrix uses up to eight child processes at once. Tests use isolated
+temporary folders and leave your `data/nova.txt` untouched. Redirected console
+output is explicitly UTF-8 so Unicode checks are consistent across platforms.
+The suite reports assertion counts and stops on a failure. These are exhaustive
+pairs/triples of command **families**, not all possible arguments or sequences
+of arbitrary length.
+
+To run either part separately or verify the packaged program:
+
+```powershell
+java -cp out/tests nova.SystematicTest core
+java -cp out/tests nova.SystematicTest console
+java -cp out/tests nova.SystematicTest console nova.jar
+```
+
+The `boundaries` option runs just the additional console boundary/restart cases.
 
 ## Setting up in Intellij
 
