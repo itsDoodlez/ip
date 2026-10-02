@@ -10,7 +10,8 @@ import nova.task.Todo;
 import nova.ui.Ui;
 
 /**
- * Parses commands entered by the user and applies them to the task list.
+ * Parses user commands and delegates additions to AddCommand.
+ * Other task operations are still executed here during the gradual extraction.
  */
 public class CommandHandler {
     private static final String TODO_COMMAND = "todo ";
@@ -58,20 +59,23 @@ public class CommandHandler {
             deleteTask(command);
 
         } else if (command.equals(TODO_COMMAND.trim()) || command.startsWith(TODO_COMMAND)) {
-            addTodo(command);
+            parseTodo(command).execute(taskList, ui, storage);
+            return;
 
         } else if (command.equals(DEADLINE_COMMAND.trim()) || command.startsWith(DEADLINE_COMMAND)) {
-            addDeadline(command);
+            parseDeadline(command).execute(taskList, ui, storage);
+            return;
 
         } else if (command.equals(EVENT_COMMAND.trim()) || command.startsWith(EVENT_COMMAND)) {
-            addEvent(command);
+            parseEvent(command).execute(taskList, ui, storage);
+            return;
 
         } else {
             throw new NovaException(
                     " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, unmark, or delete.");
         }
 
-        // Every other valid command adds a task or updates its completion status.
+        // AddCommand saves its own changes; only mark, unmark, and delete reach here.
         storage.save(taskList);
     }
 
@@ -143,19 +147,22 @@ public class CommandHandler {
         }
     }
 
-    private void addTodo(String command) throws NovaException {
+    /**
+     * Validates a todo description and prepares its addition without executing it.
+     */
+    private Command parseTodo(String command) throws NovaException {
         String description = command.equals(TODO_COMMAND.trim())
                 ? ""
                 : command.substring(TODO_COMMAND.length()).trim();
         validateText(description, "todo description");
 
-        Todo todo = new Todo(description);
-        taskList.addTask(todo);
-
-        ui.showTaskAdded(todo, taskList.getTaskCount());
+        return new AddCommand(new Todo(description));
     }
 
-    private void addDeadline(String command) throws NovaException {
+    /**
+     * Parses the deadline's description and date into a command ready to execute.
+     */
+    private Command parseDeadline(String command) throws NovaException {
         String content = command.equals(DEADLINE_COMMAND.trim())
                 ? ""
                 : command.substring(DEADLINE_COMMAND.length()).trim();
@@ -171,13 +178,13 @@ public class CommandHandler {
         validateText(description, "deadline description");
         validateText(by, "deadline date or time");
 
-        Deadline deadline = new Deadline(description, by);
-        taskList.addTask(deadline);
-
-        ui.showTaskAdded(deadline, taskList.getTaskCount());
+        return new AddCommand(new Deadline(description, by));
     }
 
-    private void addEvent(String command) throws NovaException {
+    /**
+     * Parses the event's description and time range into a command ready to execute.
+     */
+    private Command parseEvent(String command) throws NovaException {
         String content = command.equals(EVENT_COMMAND.trim())
                 ? ""
                 : command.substring(EVENT_COMMAND.length()).trim();
@@ -197,10 +204,7 @@ public class CommandHandler {
         validateText(from, "event start");
         validateText(to, "event end");
 
-        Event event = new Event(description, from, to);
-        taskList.addTask(event);
-
-        ui.showTaskAdded(event, taskList.getTaskCount());
+        return new AddCommand(new Event(description, from, to));
     }
 
     /**

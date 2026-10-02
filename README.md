@@ -26,7 +26,8 @@ If saving fails, Nova reports the error; changes remain in memory and the next
 successful change attempts to save the complete list again.
 
 File handling is in `nova.storage.Storage`; `nova.Nova` loads the tasks at startup,
-and `nova.command.CommandHandler` saves them after modifying commands.
+and modifying commands save them after execution. Additions save through
+`nova.command.AddCommand`; other changes currently save through `CommandHandler`.
 
 To run the persistence tests from the project root with JDK 25:
 
@@ -41,9 +42,15 @@ The tests use temporary folders, so they do not modify your saved tasks.
 
 `nova.ui.Ui` owns console input and output, including task listings, confirmations,
 and error display. `Nova` coordinates startup and the command loop.
-`CommandHandler` interprets commands and applies changes using `TaskList` and
-`Storage`, then asks `Ui` to display the result. `TaskList` stores and validates
-tasks without printing them. Command parsing will be separated in a later increment.
+`CommandHandler` interprets commands. For `todo`, `deadline`, and `event`, it creates
+an `AddCommand` that adds the parsed task, displays confirmation through `Ui`, and
+saves through `Storage`. `AddCommand` extends the abstract `Command` class, whose
+shared API is `execute(tasks, ui, storage)` and `isExit()` (false by default).
+Creating a command prepares the action; calling `execute` performs it.
+
+`TaskList` stores and validates tasks without printing them. Other operations still
+run in `CommandHandler`. Later increments will extract more command subclasses and
+move parsing into `Parser`, allowing the main loop to execute commands uniformly.
 
 To compile all sources and run both regression suites in PowerShell with JDK 25:
 

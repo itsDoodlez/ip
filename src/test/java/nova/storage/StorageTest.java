@@ -8,6 +8,8 @@ import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
 import java.util.List;
 
+import nova.command.AddCommand;
+import nova.command.Command;
 import nova.command.CommandHandler;
 import nova.exception.NovaException;
 import nova.task.Deadline;
@@ -27,6 +29,7 @@ public class StorageTest {
             testMissingAndEmptyFiles(testFolder.resolve("missing"));
             testRoundTrip(testFolder.resolve("round-trip"));
             testCommands(testFolder.resolve("commands"), ui);
+            testPreparedAddCommands(testFolder.resolve("prepared-additions"), ui);
             testCorruptFiles(testFolder.resolve("corrupt"));
             testDynamicCapacity(testFolder.resolve("capacity"), ui);
             testIoErrors(testFolder.resolve("errors"), ui);
@@ -63,13 +66,16 @@ public class StorageTest {
 
     private static void testCommands(Path folder, Ui ui) throws Exception {
         Path file = folder.resolve("nova.txt");
-        Storage storage = new Storage(file);
+        CountingStorage storage = new CountingStorage(file);
         TaskList tasks = new TaskList();
         CommandHandler handler = new CommandHandler(tasks, storage, ui);
         List<String> changes = List.of("todo read book", "deadline return book /by June 6th",
-                "event meeting /from 2pm /to 4pm", "mark 1", "unmark 1", "mark 2", "mark 3");
+                "event meeting /from 2pm /to 4pm", "mark 1", "unmark 1", "mark 2", "mark 3", "delete 1");
         for (String command : changes) {
+            int previousSaveCalls = storage.saveCalls;
             handler.handleCommand(command);
+            check(storage.saveCalls == previousSaveCalls + 1,
+                    "Each modifying command must save exactly once: " + command);
             checkSameTasks(tasks, storage.load());
         }
 
@@ -88,6 +94,29 @@ public class StorageTest {
         }
         check(timestamp.equals(Files.getLastModifiedTime(file)),
                 "Listing and invalid commands must not rewrite the save file.");
+        check(storage.saveCalls == changes.size(), "Listing and invalid commands must not attempt a save.");
+    }
+
+    /**
+     * Exercises additions through the abstract command API before a parser exists.
+     */
+    private static void testPreparedAddCommands(Path folder, Ui ui) throws Exception {
+        CountingStorage storage = new CountingStorage(folder.resolve("nova.txt"));
+        TaskList tasks = new TaskList();
+        List<Task> additions = List.of(new Todo("read book"), new Deadline("return book", "June 6th"),
+                new Event("meeting", "2pm", "4pm"));
+        for (Task task : additions) {
+            int previousCount = tasks.getTaskCount();
+            Command command = new AddCommand(task);
+            check(!command.isExit(), "Adding a task must keep Nova running.");
+            check(tasks.getTaskCount() == previousCount && storage.saveCalls == previousCount,
+                    "Preparing a command must not add or save a task.");
+            command.execute(tasks, ui, storage);
+            check(tasks.getTaskCount() == previousCount + 1, "Execution must add exactly one task.");
+            check(tasks.getTask(previousCount + 1) == task, "The command must add its prepared task.");
+            check(storage.saveCalls == previousCount + 1, "Execution must save exactly once.");
+            checkSameTasks(tasks, storage.load());
+        }
     }
 
     private static void testCorruptFiles(Path folder) throws Exception {
@@ -229,6 +258,23 @@ public class StorageTest {
     private static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError(message);
+        }
+    }
+
+    /**
+     * Counts save attempts while retaining real file I/O to detect duplicate saves.
+     */
+    private static class CountingStorage extends Storage {
+        private int saveCalls;
+
+        CountingStorage(Path filePath) {
+            super(filePath);
+        }
+
+        @Override
+        public void save(TaskList tasks) throws NovaException {
+            saveCalls++;
+            super.save(tasks);
         }
     }
 
