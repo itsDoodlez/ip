@@ -36,7 +36,9 @@ public class ConsoleTest {
             testCorruptSave(folder.resolve("corrupt"), classes);
             testDeadlineDates(folder.resolve("deadline-dates"), classes);
             testInvalidSavedDates(folder.resolve("invalid-saved-dates"), classes);
-            System.out.println("All 7 console scenarios passed (exact transcripts and saved files).");
+            testFindTasks(folder.resolve("find"), classes);
+            testEmptyFind(folder.resolve("empty-find"), classes);
+            System.out.println("All 9 console scenarios passed (exact transcripts and saved files).");
         } finally {
             deleteTestFolder(folder);
         }
@@ -68,7 +70,7 @@ public class ConsoleTest {
                 + "mark\nunmark abc\ndelete\nmark 1\ntodo keep me\nmark 0\ndelete 2\nbye\n";
         String expected = session(true,
                 " OOPS! Please enter a command.\n",
-                " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, unmark, or delete.\n",
+                " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.\n",
                 " OOPS! The todo description cannot be empty.\n",
                 " OOPS! A deadline must follow this format: deadline <description> /by yyyy-MM-dd.\n",
                 " OOPS! An event must follow this format: event <description> /from <start> /to <end>.\n",
@@ -159,6 +161,52 @@ public class ConsoleTest {
             checkEquals(expected, runNova(folder, classes, "todo must not overwrite\nbye\n"),
                     "Invalid saved date transcript");
             checkEquals(contents, Files.readString(file), "Invalid saved dates must stay intact");
+        }
+    }
+
+    /**
+     * Checks search scope, matching rules, result numbering, and preservation of loaded tasks.
+     */
+    private static void testFindTasks(Path folder, String classes) throws Exception {
+        Path file = folder.resolve("data/nova.txt");
+        Files.createDirectories(file.getParent());
+        String saved = "T|0|buy milk\nT|1|read book\nD|1|return book|2019-10-15\n"
+                + "E|0|book club|2pm|4pm\nT|0|notebook\nT|0|Read Book\n"
+                + "E|0|meeting|book fair|4pm\nT|0|read book\n";
+        Files.writeString(file, saved);
+        String noMatches = " Here are the matching tasks in your list:\n No matching tasks found.\n";
+        String expected = session(true,
+                " Here are the matching tasks in your list:\n"
+                        + " 1.[T][X] read book\n 2.[D][X] return book (by: Oct 15 2019)\n"
+                        + " 3.[E][ ] book club (from: 2pm to: 4pm)\n 4.[T][ ] notebook\n"
+                        + " 5.[T][ ] read book\n",
+                " Here are the matching tasks in your list:\n 1.[T][ ] Read Book\n",
+                " Here are the matching tasks in your list:\n 1.[D][X] return book (by: Oct 15 2019)\n",
+                noMatches, noMatches, noMatches, noMatches,
+                " Here are the tasks in your list:\n 1.[T][ ] buy milk\n 2.[T][X] read book\n"
+                        + " 3.[D][X] return book (by: Oct 15 2019)\n"
+                        + " 4.[E][ ] book club (from: 2pm to: 4pm)\n 5.[T][ ] notebook\n"
+                        + " 6.[T][ ] Read Book\n 7.[E][ ] meeting (from: book fair to: 4pm)\n"
+                        + " 8.[T][ ] read book\n");
+        checkEquals(expected, runNova(folder, classes,
+                "find book\nfind Book\nfind   return book   \nfind Oct\nfind 2pm\nfind [X]\n"
+                        + "find absent\nlist\nbye\n"), "Search results and unchanged full list");
+        checkEquals(saved, Files.readString(file), "Searching must preserve saved tasks");
+    }
+
+    /**
+     * Checks empty lists and missing keywords without creating task data.
+     */
+    private static void testEmptyFind(Path folder, String classes) throws Exception {
+        String missingKeyword = " OOPS! The search keyword cannot be empty.\n";
+        checkEquals(session(true,
+                " Here are the matching tasks in your list:\n No matching tasks found.\n",
+                missingKeyword, missingKeyword,
+                " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.\n"),
+                runNova(folder, classes, "find book\nfind\nfind    \nfindbook\nbye\n"),
+                "Empty searches and missing keywords");
+        if (Files.exists(folder.resolve("data/nova.txt"))) {
+            throw new AssertionError("Searching must not create a save file.");
         }
     }
 

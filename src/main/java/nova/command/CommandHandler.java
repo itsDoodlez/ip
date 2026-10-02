@@ -23,6 +23,7 @@ public class CommandHandler {
     private static final String MARK_COMMAND = "mark ";
     private static final String UNMARK_COMMAND = "unmark ";
     private static final String DELETE_COMMAND = "delete ";
+    private static final String FIND_COMMAND = "find ";
     private static final String BY_SEPARATOR = " /by ";
     private static final String FROM_SEPARATOR = " /from ";
     private static final String TO_SEPARATOR = " /to ";
@@ -52,6 +53,10 @@ public class CommandHandler {
             ui.showTasks(taskList);
             return;
 
+        } else if (command.equals(FIND_COMMAND.trim()) || command.startsWith(FIND_COMMAND)) {
+            findTasks(command);
+            return;
+
         } else if (command.equals(MARK_COMMAND.trim()) || command.startsWith(MARK_COMMAND)) {
             markTask(command);
 
@@ -75,11 +80,25 @@ public class CommandHandler {
 
         } else {
             throw new NovaException(
-                    " OOPS! I don't recognize that command. Try: list, todo, deadline, event, mark, unmark, or delete.");
+                    " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.");
         }
 
         // AddCommand saves its own changes; only mark, unmark, and delete reach here.
         storage.save(taskList);
+    }
+
+    /**
+     * Validates the search text and displays matches without changing or saving tasks.
+     *
+     * @param command the complete find command
+     * @throws NovaException if no search keyword was supplied
+     */
+    private void findTasks(String command) throws NovaException {
+        String keyword = command.equals(FIND_COMMAND.trim())
+                ? ""
+                : command.substring(FIND_COMMAND.length()).trim();
+        validateText(keyword, "search keyword");
+        ui.showMatchingTasks(taskList.findTasks(keyword));
     }
 
     private void markTask(String command) throws NovaException {

@@ -87,7 +87,10 @@ public class StorageTest {
         Files.setLastModifiedTime(file, FileTime.fromMillis(1000));
         FileTime timestamp = Files.getLastModifiedTime(file);
         handler.handleCommand("list");
-        for (String command : List.of("todo", "mark 4", "unmark 0", "deadline missing date", "unknown")) {
+        handler.handleCommand("find book");
+        handler.handleCommand("find absent");
+        for (String command : List.of("todo", "mark 4", "unmark 0", "deadline missing date", "unknown",
+                "find", "find    ")) {
             try {
                 handler.handleCommand(command);
                 throw new AssertionError("Expected an invalid command error: " + command);
@@ -97,8 +100,8 @@ public class StorageTest {
             }
         }
         check(timestamp.equals(Files.getLastModifiedTime(file)),
-                "Listing and invalid commands must not rewrite the save file.");
-        check(storage.saveCalls == changes.size(), "Listing and invalid commands must not attempt a save.");
+                "Listing, searching, and invalid commands must not rewrite the save file.");
+        check(storage.saveCalls == changes.size(), "Listing, searching, and invalid commands must not attempt a save.");
     }
 
     /**

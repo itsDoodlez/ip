@@ -53,6 +53,23 @@ public class TaskList {
     }
 
     /**
+     * Finds tasks whose descriptions contain the exact, case-sensitive search text.
+     * The returned list preserves task order without changing the stored list.
+     *
+     * @param keyword nonblank text to search for in task descriptions
+     * @return a separate list of matching tasks, including their current completion status
+     */
+    public List<Task> findTasks(String keyword) {
+        List<Task> matches = new ArrayList<>();
+        for (Task task : tasks) {
+            if (task.getDescription().contains(keyword)) {
+                matches.add(task);
+            }
+        }
+        return matches;
+    }
+
+    /**
      * Checks the displayed task number before converting it to a list index.
      *
      * @param taskNumber one-based task number

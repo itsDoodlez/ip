@@ -1,5 +1,6 @@
 package nova.ui;
 
+import java.util.List;
 import java.util.Scanner;
 
 import nova.exception.NovaException;
@@ -74,6 +75,23 @@ public class Ui implements AutoCloseable {
         System.out.println(" Here are the tasks in your list:");
         for (int i = 1; i <= taskList.getTaskCount(); i++) {
             System.out.println(" " + i + "." + taskList.getTask(i));
+        }
+    }
+
+    /**
+     * Displays search results numbered from one, or explains that none matched.
+     * These numbers describe the results; task-changing commands still use list numbers.
+     *
+     * @param matches tasks matching the search, in their original order
+     */
+    public void showMatchingTasks(List<Task> matches) {
+        System.out.println(" Here are the matching tasks in your list:");
+        if (matches.isEmpty()) {
+            System.out.println(" No matching tasks found.");
+            return;
+        }
+        for (int i = 0; i < matches.size(); i++) {
+            System.out.println(" " + (i + 1) + "." + matches.get(i));
         }
     }
 

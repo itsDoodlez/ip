@@ -2,6 +2,24 @@
 
 This is a project template for a greenfield Java project. It's named after the Java mascot _Duke_. Given below are instructions on how to use it.
 
+## Finding tasks
+
+Use `find <keyword>` to search task descriptions:
+
+```text
+find book
+```
+
+Nova lists matching todos, deadlines, and events in their original order, with
+result numbers starting at 1. The search is case-sensitive and matches any part
+of the description: `book` matches both `read book` and `notebook`, but not `Book`.
+Text after `find` is searched as one phrase, with surrounding spaces ignored.
+Dates, event times, and status icons are not searched.
+
+An empty keyword produces an error; a search with no matches displays
+`No matching tasks found.` Searching does not change or save tasks.
+Use the full `list` to get task numbers for `mark`, `unmark`, and `delete`.
+
 ## Saving tasks
 
 Run Nova with the project root as the working directory. Tasks are loaded from
