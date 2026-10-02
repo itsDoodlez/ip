@@ -1,6 +1,12 @@
-# Nova project template
+# Nova
 
-This is a project template for a greenfield Java project. It's named after the Java mascot _Duke_. Given below are instructions on how to use it.
+Nova is a command-line task manager for keeping track of todos, deadlines, and
+events. Add tasks, search their descriptions, mark them as done, and keep your
+list between sessions with automatic saving.
+
+Start with the [Nova User Guide](docs/README.md) for setup instructions, examples
+of every command, and troubleshooting. The sections below cover development,
+storage details, and regression tests.
 
 ## Finding tasks
 
@@ -24,8 +30,9 @@ Use the full `list` to get task numbers for `mark`, `unmark`, and `delete`.
 
 Run Nova with the project root as the working directory. Tasks are loaded from
 `data/nova.txt` at startup and saved automatically after every successful `todo`,
-`deadline`, `event`, `mark`, or `unmark` command. The folder and file are created
-on the first save if they do not exist. Local task data is ignored by Git.
+`deadline`, `event`, `mark`, `unmark`, or `delete` command. The folder and file are
+created on the first save if they do not exist.
+Local task data is ignored by Git.
 
 The UTF-8 file contains one task per line, with pipe-separated fields (no padding
 spaces). `0` means not done and `1` means done. Events store both their start and end:
@@ -136,24 +143,35 @@ java -cp out/tests nova.SystematicTest console nova.jar
 
 The `boundaries` option runs just the additional console boundary/restart cases.
 
-## Setting up in Intellij
+## Building the JAR
 
-Prerequisites: JDK 25, update Intellij to the most recent version.
+After changing production code, rebuild the packaged application with JDK 25 so
+`nova.jar` matches the source. From the project root:
 
-1. Open Intellij (if you are not in the welcome screen, click `File` > `Close Project` to close the existing project first)
-1. Open the project into Intellij as follows:
+```text
+javac -Xlint:all -d out/release -sourcepath src/main/java src/main/java/nova/Nova.java
+jar --create --file nova.jar --main-class nova.Nova -C out/release nova
+java -jar nova.jar
+```
+
+Only production classes belong in the JAR; the regression suites above stay in
+`out/tests`. Run the packaged-program tests above before distributing a new JAR.
+
+## Setting up in IntelliJ IDEA
+
+Prerequisites: JDK 25 and IntelliJ IDEA with Java 25 support.
+
+1. Open IntelliJ IDEA (if you are not in the welcome screen, click `File` > `Close Project` to close the existing project first).
+1. Open the project into IntelliJ IDEA as follows:
    1. Click `Open`.
    1. Select the project directory, and click `OK`.
    1. If there are any further prompts, accept the defaults.
 1. Configure the project to use **JDK 25** (not other versions) as explained in [here](https://www.jetbrains.com/help/idea/sdk.html#set-up-jdk).<br>
    In the same dialog, set the **Project language level** field to the `SDK default` option.
-1. After that, locate the `src/main/java/nova/Nova.java` file, right-click it, and choose `Run 'Nova.main()'` (if the code editor is showing compile errors, try restarting the IDE). If the setup is correct, you should see something like the below as the output:
-   ```
-    ____        _        
-   |  _ \ _   _| | _____ 
-   | | | | | | | |/ / _ \
-   | |_| | |_| |   <  __/
-   |____/ \__,_|_|\_\___|
+1. After that, locate the `src/main/java/nova/Nova.java` file, right-click it, and choose `Run 'Nova.main()'` (if the code editor is showing compile errors, check the project SDK and source root). If the setup is correct, Nova displays its banner followed by:
+   ```text
+   Hello! I'm Nova.
+   What can I do for you?
    ```
 
 **Warning:** Keep the `src\main\java` folder as the root folder for Java files (i.e., don't rename those folders or move Java files to another folder outside of this folder path), as this is the default location some tools (e.g., Gradle) expect to find Java files.

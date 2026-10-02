@@ -87,7 +87,8 @@ public class CommandHandler {
 
         } else {
             throw new NovaException(
-                    " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.");
+                    " OOPS! I don't recognize that command. "
+                            + "Try: list, find, todo, deadline, event, mark, unmark, or delete.");
         }
 
         // AddCommand saves its own changes; only mark, unmark, and delete reach here.

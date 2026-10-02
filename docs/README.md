@@ -6,7 +6,10 @@ events. Type a command, press **Enter**, and Nova handles the rest.
 ## Quick start
 
 1. Install **JDK 25**. Check that `java -version` and `javac -version` both show 25.
-2. Open a terminal in the project folder (the folder containing `src` and `docs`).
+2. Download the source from the [Nova repository](https://github.com/itsDoodlez/ip)
+   using **Code > Download ZIP**, then extract it. You can also use an existing
+   clone of the repository.
+3. Open a terminal in the extracted project folder (the folder containing `src` and `docs`).
    Compile and start Nova:
 
    ```text
@@ -14,9 +17,13 @@ events. Type a command, press **Enter**, and Nova handles the rest.
    java -cp out nova.Nova
    ```
 
-3. When Nova greets you, try `todo read book`, then `list`.
+4. When Nova greets you, try `todo read book`, then `list`.
 
 For later sessions, run `java -cp out nova.Nova` from the same project folder.
+
+The download also includes `nova.jar`. To use the packaged application with
+Java 25, run `java -jar nova.jar` from that folder. Use a terminal to run Nova so
+you can enter commands and see its responses.
 
 ## Features
 
@@ -43,6 +50,11 @@ like `tomorrow`, and times of day are not accepted for deadlines.
 Event start and end values are free text, such as `Oct 16 2pm`. Nova displays them
 as entered and does not check their dates or chronological order. Keep `/from`
 before `/to`, with spaces around both separators.
+
+In deadline and event commands, `/by`, `/from`, and `/to` with surrounding spaces
+act as separators. Avoid those separator phrases inside the description or event
+start text so Nova can identify the fields correctly. Todo descriptions do not
+have this restriction.
 
 ### Viewing all tasks: `list`
 

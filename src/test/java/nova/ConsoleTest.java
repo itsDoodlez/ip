@@ -13,11 +13,17 @@ import java.util.concurrent.TimeUnit;
  */
 public class ConsoleTest {
     private static final String DIVIDER = "____________________________________________________________\n";
-    private static final String WELCOME = DIVIDER
-            + " _  _              \n"
-            + "| \\| |___ ___ __ _ \n"
-            + "| .` / _ \\ V  V / _` |\n"
-            + "|_|\\_\\___/\\_/\\_/\\__,_|\n\n"
+    /** Shared expected greeting, kept independent of the production UI for transcript checks. */
+    static final String WELCOME = DIVIDER
+            + ",---.   .--.    ,-----.    ,---.  ,---.   ____     \n"
+            + "|    \\  |  |  .'  .-,  '.  |   /  |   | .'  __ `.  \n"
+            + "|  ,  \\ |  | / ,-.|  \\ _ \\ |  |   |  .'/   '  \\  \\ \n"
+            + "|  |\\_ \\|  |;  \\  '_ /  | :|  | _ |  | |___|  /  | \n"
+            + "|  _( )_\\  ||  _`,/ \\ _/  ||  _( )_  |    _.-`   | \n"
+            + "| (_ o _)  |: (  '\\_/ \\   ;\\ (_ o._) /  .'   _    |\n"
+            + "|  (_,_)\\  | \\ `\"/  \\  ) /  \\ (_,_) /   |  _( )_  |\n"
+            + "|  |    |  |  '. \\_/``\".'    \\     /    \\ (_ o _) /\n"
+            + "'--'    '--'    '-----'       `---`      '.(_,_).' \n\n"
             + "Hello! I'm Nova.\nWhat can I do for you?\n" + DIVIDER;
     private static final String GOODBYE = "Bye. Hope to see you again soon!\n" + DIVIDER;
 
@@ -80,7 +86,8 @@ public class ConsoleTest {
                 + "mark\nunmark abc\ndelete\nmark 1\ntodo keep me\nmark 0\ndelete 2\nbye\n";
         String expected = session(true,
                 " OOPS! Please enter a command.\n",
-                " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.\n",
+                " OOPS! I don't recognize that command. "
+                        + "Try: list, find, todo, deadline, event, mark, unmark, or delete.\n",
                 " OOPS! The todo description cannot be empty.\n",
                 " OOPS! A deadline must follow this format: deadline <description> /by yyyy-MM-dd.\n",
                 " OOPS! An event must follow this format: event <description> /from <start> /to <end>.\n",
@@ -221,7 +228,8 @@ public class ConsoleTest {
         checkEquals(session(true,
                 " Here are the matching tasks in your list:\n No matching tasks found.\n",
                 missingKeyword, missingKeyword,
-                " OOPS! I don't recognize that command. Try: list, find, todo, deadline, event, mark, unmark, or delete.\n"),
+                " OOPS! I don't recognize that command. "
+                        + "Try: list, find, todo, deadline, event, mark, unmark, or delete.\n"),
                 runNova(folder, classes, "find book\nfind\nfind    \nfindbook\nbye\n"),
                 "Empty searches and missing keywords");
         if (Files.exists(folder.resolve("data/nova.txt"))) {

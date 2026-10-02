@@ -32,9 +32,7 @@ import nova.ui.Ui;
  */
 public class SystematicTest {
     private static final String DIVIDER = "____________________________________________________________\n";
-    private static final String WELCOME = DIVIDER + " _  _              \n"
-            + "| \\| |___ ___ __ _ \n| .` / _ \\ V  V / _` |\n|_|\\_\\___/\\_/\\_/\\__,_|\n\n"
-            + "Hello! I'm Nova.\nWhat can I do for you?\n" + DIVIDER;
+    private static final String WELCOME = ConsoleTest.WELCOME;
     private static final String GOODBYE = "Bye. Hope to see you again soon!\n" + DIVIDER;
     private static final String UNKNOWN = " OOPS! I don't recognize that command. "
             + "Try: list, find, todo, deadline, event, mark, unmark, or delete.\n";
@@ -56,6 +54,9 @@ public class SystematicTest {
      * "core" skips the slower separate-process matrix; "boundaries" runs only CLI boundaries.
      * An optional second argument
      * selects another compiled class directory or JAR for console verification.
+     *
+     * @param args optional suite selection and path to the program under test
+     * @throws Exception if test setup, execution, or cleanup fails
      */
     public static void main(String[] args) throws Exception {
         check(Runtime.version().feature() == 25, "Run this suite with Java 25.");
@@ -198,6 +199,12 @@ public class SystematicTest {
             super(file);
         }
 
+        /**
+         * Counts the save attempt before writing the tasks to the test file.
+         *
+         * @param tasks the tasks to save
+         * @throws NovaException if saving fails
+         */
         @Override
         public void save(TaskList tasks) throws NovaException {
             saves++;
@@ -330,7 +337,8 @@ public class SystematicTest {
                 }
                 for (String number : List.of("abc", "1.0", "1e0", "1 2", "1,000", "--1", "+", "-", "NaN",
                         "2147483648", "-2147483649", "9".repeat(300), "0x1", "1/2", "\u20031")) {
-                    session.step(invalid(name + " " + number, " OOPS! The task number must be a valid whole number.\n"));
+                    session.step(invalid(name + " " + number,
+                            " OOPS! The task number must be a valid whole number.\n"));
                 }
             }
         }
@@ -348,7 +356,8 @@ public class SystematicTest {
         session.step(add("event text /from tomorrow | \\start /to yesterday | \\end",
                 task('E', "text", "tomorrow | \\start", "yesterday | \\end", false)));
         session.step(operation(Kind.DEADLINE, 1));
-        for (String keyword : List.of("book", "Book", "read book", "read  book", "absent", "[X]", "2024", "Feb", "2pm")) {
+        for (String keyword : List.of("book", "Book", "read book", "read  book", "absent", "[X]",
+                "2024", "Feb", "2pm")) {
             session.step(find("find   " + keyword + "   ", keyword));
         }
         session.reload();
@@ -506,7 +515,8 @@ public class SystematicTest {
         for (String newline : List.of("\n", "\r\n", "\r")) {
             for (boolean trailing : List.of(false, true)) {
                 Files.writeString(file, "T|0|first" + newline + "E|1|last|a|b" + (trailing ? newline : ""));
-                assertTasks(List.of(task('T', "first", "", "", false), task('E', "last", "a", "b", true)), storage.load());
+                assertTasks(List.of(task('T', "first", "", "", false), task('E', "last", "a", "b", true)),
+                        storage.load());
             }
         }
         List<ExpectedTask> expected = new ArrayList<>();
@@ -553,7 +563,8 @@ public class SystematicTest {
                 check(session.storage.saves == before + 1, "Read-only/error commands must not retry saving.");
             }
             try (var files = Files.list(root)) {
-                check(files.noneMatch(path -> path.getFileName().toString().endsWith(".tmp")), "Clean failed-save temp files.");
+                check(files.noneMatch(path -> path.getFileName().toString().endsWith(".tmp")),
+                        "Clean failed-save temp files.");
             }
             Files.delete(marker);
             Files.delete(session.file);
@@ -629,7 +640,8 @@ public class SystematicTest {
         byte[] original = Files.readAllBytes(corrupt);
         String output = runNova(folder, classes, "todo ignored\nbye\n");
         check(output.contains("line 2:") && output.contains("Your file was not changed."), "Explain corrupt startup.");
-        check(!output.contains("I've added") && !output.contains(GOODBYE), "Corrupt startup must stop before commands.");
+        check(!output.contains("I've added") && !output.contains(GOODBYE),
+                "Corrupt startup must stop before commands.");
         check(Arrays.equals(original, Files.readAllBytes(corrupt)), "Protect corrupt data on startup.");
     }
 
@@ -676,7 +688,8 @@ public class SystematicTest {
         String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         Process process = new ProcessBuilder(java, "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8",
                 "-cp", classes, "nova.Nova").directory(folder.toFile())
-                .redirectInput(inputFile.toFile()).redirectErrorStream(true).redirectOutput(outputFile.toFile()).start();
+                .redirectInput(inputFile.toFile()).redirectErrorStream(true)
+                .redirectOutput(outputFile.toFile()).start();
         try {
             check(process.waitFor(10, TimeUnit.SECONDS), "Nova did not exit within 10 seconds.");
             String output = Files.readString(outputFile);
@@ -751,7 +764,8 @@ public class SystematicTest {
         for (int i = 0; i < expected.size(); i++) {
             ExpectedTask value = expected.get(i);
             Task task = actual.getTask(i + 1);
-            check(value.description.equals(task.getDescription()) && value.done == task.isDone(), "Task fields differ.");
+            check(value.description.equals(task.getDescription()) && value.done == task.isDone(),
+                    "Task fields differ.");
             equal(value.display(), task.toString(), "Task display");
             check(task.getClass().getSimpleName().equals(switch (value.type) {
             case 'T' -> "Todo";
