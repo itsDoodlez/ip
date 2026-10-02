@@ -24,16 +24,8 @@ public class TaskList {
         tasks.add(task);
     }
 
-    public void listTasks() {
-        System.out.println(" Here are the tasks in your list:");
-
-        for (int i = 0; i < tasks.size(); i++) {
-            System.out.println(" " + (i + 1) + "." + tasks.get(i));
-        }
-    }
-
     /**
-     * Returns a task using the one-based number shown by {@link #listTasks()}.
+     * Returns a task using its one-based position in the list.
      *
      * @param taskNumber one-based task number
      * @return the requested task

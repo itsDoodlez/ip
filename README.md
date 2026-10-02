@@ -20,7 +20,7 @@ E|0|project meeting|Aug 6th 2pm|Aug 6th 4pm
 
 Within text fields, `\|` represents a literal pipe, `\\` a backslash, `\n` a newline,
 and `\r` a carriage return. Nova writes these escapes automatically.
-If the file contains a malformed task or exceeds the 100-task limit, Nova reports
+If the file contains a malformed task, Nova reports
 the affected line and stops without changing the file. Correct the file and restart.
 If saving fails, Nova reports the error; changes remain in memory and the next
 successful change attempts to save the complete list again.
@@ -36,6 +36,28 @@ java -cp out/level7 nova.storage.StorageTest
 ```
 
 The tests use temporary folders, so they do not modify your saved tasks.
+
+## Class responsibilities and console regression tests
+
+`nova.ui.Ui` owns console input and output, including task listings, confirmations,
+and error display. `Nova` coordinates startup and the command loop.
+`CommandHandler` interprets commands and applies changes using `TaskList` and
+`Storage`, then asks `Ui` to display the result. `TaskList` stores and validates
+tasks without printing them. Command parsing will be separated in a later increment.
+
+To compile all sources and run both regression suites in PowerShell with JDK 25:
+
+```powershell
+$sources = Get-ChildItem src/main/java, src/test/java -Recurse -Filter *.java
+javac -Xlint:all -d out/tests $sources.FullName
+java -cp out/tests nova.storage.StorageTest
+java -cp out/tests nova.ConsoleTest
+```
+
+The console suite launches Nova in temporary folders and checks exact output and
+saved data for task commands, invalid input, restarts, end-of-input, and corrupt
+saves. It also accepts a compiled-classes folder as an argument to check an earlier
+build against the same expectations.
 
 ## Setting up in Intellij
 

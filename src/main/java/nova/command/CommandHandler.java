@@ -7,6 +7,7 @@ import nova.task.Event;
 import nova.task.Task;
 import nova.task.TaskList;
 import nova.task.Todo;
+import nova.ui.Ui;
 
 /**
  * Parses commands entered by the user and applies them to the task list.
@@ -24,10 +25,12 @@ public class CommandHandler {
 
     private final TaskList taskList;
     private final Storage storage;
+    private final Ui ui;
 
-    public CommandHandler(TaskList taskList, Storage storage) {
+    public CommandHandler(TaskList taskList, Storage storage, Ui ui) {
         this.taskList = taskList;
         this.storage = storage;
+        this.ui = ui;
     }
 
     /**
@@ -42,7 +45,7 @@ public class CommandHandler {
         }
 
         if (command.equals("list")) {
-            listTasks();
+            ui.showTasks(taskList);
             return;
 
         } else if (command.equals(MARK_COMMAND.trim()) || command.startsWith(MARK_COMMAND)) {
@@ -72,22 +75,16 @@ public class CommandHandler {
         storage.save(taskList);
     }
 
-    private void listTasks() {
-        taskList.listTasks();
-    }
-
     private void markTask(String command) throws NovaException {
-        updateTaskStatus(command, MARK_COMMAND, true,
-                " Nice! I've marked this task as done:");
+        updateTaskStatus(command, MARK_COMMAND, true);
     }
 
     private void unmarkTask(String command) throws NovaException {
-        updateTaskStatus(command, UNMARK_COMMAND, false,
-                " OK, I've marked this task as not done yet:");
+        updateTaskStatus(command, UNMARK_COMMAND, false);
     }
 
     /**
-     * Removes the selected task and prints it with the remaining task count.
+     * Removes the selected task and asks the UI to confirm the removal.
      *
      * @param command the complete delete command
      * @throws NovaException if the task number is missing, invalid, or out of range
@@ -96,22 +93,18 @@ public class CommandHandler {
         int taskNumber = parseTaskNumber(command, DELETE_COMMAND, "delete");
         Task task = taskList.removeTask(taskNumber);
 
-        System.out.println(" Noted. I've removed this task:");
-        System.out.println("   " + task);
-        System.out.println(" Now you have " + taskList.getTaskCount()
-                + " tasks in the list.");
+        ui.showTaskRemoved(task, taskList.getTaskCount());
     }
 
     /**
-     * Changes a task's completion status and prints the corresponding feedback.
+     * Changes a task's completion status and asks the UI to display feedback.
      *
      * @param command the complete mark or unmark command
      * @param commandPrefix the prefix used by the command
      * @param shouldBeDone whether the task should be marked as done
-     * @param confirmationMessage the message to display after updating the task
      */
     private void updateTaskStatus(String command, String commandPrefix,
-            boolean shouldBeDone, String confirmationMessage) throws NovaException {
+            boolean shouldBeDone) throws NovaException {
         int taskNumber = parseTaskNumber(command, commandPrefix, "update");
         Task task = taskList.getTask(taskNumber);
         if (shouldBeDone) {
@@ -120,8 +113,7 @@ public class CommandHandler {
             task.markAsNotDone();
         }
 
-        System.out.println(confirmationMessage);
-        System.out.println("   " + task);
+        ui.showTaskStatusChanged(task);
     }
 
     /**
@@ -160,7 +152,7 @@ public class CommandHandler {
         Todo todo = new Todo(description);
         taskList.addTask(todo);
 
-        printAddedMessage(todo);
+        ui.showTaskAdded(todo, taskList.getTaskCount());
     }
 
     private void addDeadline(String command) throws NovaException {
@@ -182,7 +174,7 @@ public class CommandHandler {
         Deadline deadline = new Deadline(description, by);
         taskList.addTask(deadline);
 
-        printAddedMessage(deadline);
+        ui.showTaskAdded(deadline, taskList.getTaskCount());
     }
 
     private void addEvent(String command) throws NovaException {
@@ -208,14 +200,7 @@ public class CommandHandler {
         Event event = new Event(description, from, to);
         taskList.addTask(event);
 
-        printAddedMessage(event);
-    }
-
-    private void printAddedMessage(Task task) {
-        System.out.println(" Got it. I've added this task:");
-        System.out.println("   " + task);
-        System.out.println(" Now you have " + taskList.getTaskCount()
-                + " tasks in the list.");
+        ui.showTaskAdded(event, taskList.getTaskCount());
     }
 
     /**

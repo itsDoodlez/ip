@@ -1,68 +1,50 @@
 package nova;
 
 import java.nio.file.Path;
-import java.util.Scanner;
 
 import nova.command.CommandHandler;
 import nova.exception.NovaException;
 import nova.storage.Storage;
 import nova.task.TaskList;
+import nova.ui.Ui;
 
 /**
- * Runs Nova's command-line user interface.
+ * Coordinates startup, user interaction, and command handling for Nova.
  */
 public class Nova {
 
-    private static final String DIVIDER = "____________________________________________________________\n";
-    private static final String BANNER = " _  _              \n"
-            + "| \\| |___ ___ __ _ \n"
-            + "| .` / _ \\ V  V / _` |\n"
-            + "|_|\\_\\___/\\_/\\_/\\__,_|\n";
     private static final String EXIT_COMMAND = "bye";
 
     public static void main(String[] args) {
-        printWelcomeMessage();
+        try (Ui ui = new Ui()) {
+            ui.showWelcome();
 
-        Storage storage = new Storage(Path.of("data", "nova.txt"));
-        TaskList taskList;
-        try {
-            taskList = storage.load();
-        } catch (NovaException e) {
-            System.out.println(e.getMessage());
-            System.out.println(" Please fix the saved file or its permissions and restart Nova.");
-            System.out.println(" Your file was not changed.");
-            System.out.print(DIVIDER);
-            return;
+            Storage storage = new Storage(Path.of("data", "nova.txt"));
+            TaskList taskList;
+            try {
+                taskList = storage.load();
+            } catch (NovaException e) {
+                ui.showLoadingError(e.getMessage());
+                return;
+            }
+
+            CommandHandler commandHandler = new CommandHandler(taskList, storage, ui);
+            runCommandLoop(ui, commandHandler);
+            ui.showGoodbye();
         }
-
-        Scanner scanner = new Scanner(System.in);
-        CommandHandler commandHandler = new CommandHandler(taskList, storage);
-
-        runCommandLoop(scanner, commandHandler);
-        printGoodbyeMessage();
-
-        scanner.close();
-    }
-
-    private static void printWelcomeMessage() {
-        System.out.print(DIVIDER);
-        System.out.println(BANNER);
-        System.out.println("Hello! I'm Nova.");
-        System.out.println("What can I do for you?");
-        System.out.print(DIVIDER);
     }
 
     /**
      * Reads and handles commands until the user enters the exit command.
      *
-     * @param scanner reads commands from the user
+     * @param ui reads commands and displays feedback
      * @param commandHandler processes each command
      */
-    private static void runCommandLoop(Scanner scanner, CommandHandler commandHandler) {
-        while (scanner.hasNextLine()) {
-            String command = scanner.nextLine();
+    private static void runCommandLoop(Ui ui, CommandHandler commandHandler) {
+        while (ui.hasNextCommand()) {
+            String command = ui.readCommand();
 
-            System.out.print(DIVIDER);
+            ui.showDivider();
 
             if (command.equals(EXIT_COMMAND)) {
                 break;
@@ -71,15 +53,10 @@ public class Nova {
             try {
                 commandHandler.handleCommand(command);
             } catch (NovaException e) {
-                System.out.println(e.getMessage());
+                ui.showError(e.getMessage());
             }
 
-            System.out.print(DIVIDER);
+            ui.showDivider();
         }
-    }
-
-    private static void printGoodbyeMessage() {
-        System.out.println("Bye. Hope to see you again soon!");
-        System.out.print(DIVIDER);
     }
 }

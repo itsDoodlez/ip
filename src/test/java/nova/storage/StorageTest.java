@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
 import java.util.List;
@@ -16,6 +15,7 @@ import nova.task.Event;
 import nova.task.Task;
 import nova.task.TaskList;
 import nova.task.Todo;
+import nova.ui.Ui;
 
 /**
  * Runs persistence regression tests with Java alone, using isolated temporary folders.
@@ -23,13 +23,13 @@ import nova.task.Todo;
 public class StorageTest {
     public static void main(String[] args) throws Exception {
         Path testFolder = Files.createTempDirectory("nova-storage-test-");
-        try {
+        try (Ui ui = new Ui()) {
             testMissingAndEmptyFiles(testFolder.resolve("missing"));
             testRoundTrip(testFolder.resolve("round-trip"));
-            testCommands(testFolder.resolve("commands"));
+            testCommands(testFolder.resolve("commands"), ui);
             testCorruptFiles(testFolder.resolve("corrupt"));
-            testCapacity(testFolder.resolve("capacity"));
-            testIoErrors(testFolder.resolve("errors"));
+            testDynamicCapacity(testFolder.resolve("capacity"), ui);
+            testIoErrors(testFolder.resolve("errors"), ui);
             testRestart(testFolder.resolve("restart"));
             System.out.println("All storage tests passed.");
         } finally {
@@ -61,11 +61,11 @@ public class StorageTest {
         check(storage.load().getTaskCount() == 0, "Saving an empty list must remove old tasks.");
     }
 
-    private static void testCommands(Path folder) throws Exception {
+    private static void testCommands(Path folder, Ui ui) throws Exception {
         Path file = folder.resolve("nova.txt");
         Storage storage = new Storage(file);
         TaskList tasks = new TaskList();
-        CommandHandler handler = new CommandHandler(tasks, storage);
+        CommandHandler handler = new CommandHandler(tasks, storage, ui);
         List<String> changes = List.of("todo read book", "deadline return book /by June 6th",
                 "event meeting /from 2pm /to 4pm", "mark 1", "unmark 1", "mark 2", "mark 3");
         for (String command : changes) {
@@ -109,9 +109,9 @@ public class StorageTest {
     }
 
     /**
-     * Checks the boundary of the existing fixed-size list without changing its capacity.
+     * Verifies that saving and loading preserve a list beyond the former 100-task limit.
      */
-    private static void testCapacity(Path folder) throws Exception {
+    private static void testDynamicCapacity(Path folder, Ui ui) throws Exception {
         Path file = folder.resolve("nova.txt");
         Storage storage = new Storage(file);
         TaskList tasks = new TaskList();
@@ -121,30 +121,23 @@ public class StorageTest {
         storage.save(tasks);
         TaskList loaded = storage.load();
         checkSameTasks(tasks, loaded);
-        CommandHandler handler = new CommandHandler(loaded, storage);
+        CommandHandler handler = new CommandHandler(loaded, storage, ui);
         handler.handleCommand("mark 100");
         check(storage.load().getTask(100).isDone(), "The last task must still support saving updates.");
-        String saved = Files.readString(file, StandardCharsets.UTF_8);
-        try {
-            handler.handleCommand("todo one too many");
-            throw new AssertionError("Expected an error adding a 101st task.");
-        } catch (NovaException e) {
-            check(e.getMessage().contains("full"), "Report the existing list capacity error.");
-            check(saved.equals(Files.readString(file)), "A rejected addition must not change the save.");
-        }
-        Files.writeString(file, "T|0|task 101\n", StandardCharsets.UTF_8, StandardOpenOption.APPEND);
-        String oversized = Files.readString(file);
-        checkLoadRejected(storage, "line 101");
-        check(oversized.equals(Files.readString(file)), "Preserve a file that exceeds the task limit.");
+        handler.handleCommand("todo task 101");
+        check(loaded.getTaskCount() == 101, "The task list must grow beyond 100 tasks.");
+        checkSameTasks(loaded, storage.load());
+        handler.handleCommand("mark 101");
+        check(storage.load().getTask(101).isDone(), "Tasks beyond 100 must support saving updates.");
     }
 
-    private static void testIoErrors(Path folder) throws Exception {
+    private static void testIoErrors(Path folder, Ui ui) throws Exception {
         Files.createDirectories(folder);
         Path blockedFolder = folder.resolve("blocked");
         Files.writeString(blockedFolder, "keep this file", StandardCharsets.UTF_8);
         Storage storage = new Storage(blockedFolder.resolve("nova.txt"));
         TaskList tasks = new TaskList();
-        CommandHandler handler = new CommandHandler(tasks, storage);
+        CommandHandler handler = new CommandHandler(tasks, storage, ui);
         try {
             handler.handleCommand("todo still in memory");
             throw new AssertionError("Expected a save error when the parent is a regular file.");
